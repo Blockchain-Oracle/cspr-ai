@@ -1,0 +1,74 @@
+# CSPR.AI Development Infrastructure
+# PostgreSQL: Conversation history persistence (chats, messages, parts)
+# Redis: Session cache, active conversations, real-time updates
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: csprai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: csprai
+      POSTGRES_PASSWORD: csprai_dev_password
+      POSTGRES_DB: csprai
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U csprai -d csprai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: csprai-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Optional: Redis Commander for debugging Redis data
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: csprai-redis-commander
+    restart: unless-stopped
+    environment:
+      REDIS_HOSTS: local:redis:6379
+    ports:
+      - "8081:8081"
+    depends_on:
+      - redis
+    profiles:
+      - debug
+
+  # Optional: pgAdmin for debugging PostgreSQL data
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: csprai-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@csprai.local
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "8082:80"
+    depends_on:
+      - postgres
+    profiles:
+      - debug
+
+volumes:
+  postgres_data:
+    name: csprai-postgres-data
+  redis_data:
+    name: csprai-redis-data

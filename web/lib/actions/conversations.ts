@@ -1,0 +1,179 @@
+'use server';
+
+import { eq, desc, asc } from 'drizzle-orm';
+import { db, conversations, messages, type Conversation, type Message } from '@/lib/db';
+
+/**
+ * Create a new conversation
+ */
+export async function createConversation(params: {
+  title?: string;
+  walletAddress?: string;
+}): Promise<Conversation> {
+  const [conversation] = await db
+    .insert(conversations)
+    .values({
+      title: params.title || 'New Conversation',
+      walletAddress: params.walletAddress || null,
+    })
+    .returning();
+
+  return conversation;
+}
+
+/**
+ * Get all conversations, ordered by most recent first
+ */
+export async function getConversations(walletAddress?: string): Promise<Conversation[]> {
+  if (walletAddress) {
+    return db.query.conversations.findMany({
+      where: eq(conversations.walletAddress, walletAddress),
+      orderBy: [desc(conversations.updatedAt)],
+    });
+  }
+
+  return db.query.conversations.findMany({
+    orderBy: [desc(conversations.updatedAt)],
+  });
+}
+
+/**
+ * Get a single conversation by ID with its messages
+ */
+export async function getConversationWithMessages(id: string): Promise<{
+  conversation: Conversation;
+  messages: Message[];
+} | null> {
+  const conversation = await db.query.conversations.findFirst({
+    where: eq(conversations.id, id),
+    with: {
+      messages: {
+        orderBy: [asc(messages.createdAt)],
+      },
+    },
+  });
+
+  if (!conversation) return null;
+
+  return {
+    conversation,
+    messages: conversation.messages,
+  };
+}
+
+/**
+ * Update conversation title
+ */
+export async function updateConversationTitle(
+  id: string,
+  title: string
+): Promise<Conversation | null> {
+  const [updated] = await db
+    .update(conversations)
+    .set({
+      title,
+      updatedAt: new Date()
+    })
+    .where(eq(conversations.id, id))
+    .returning();
+
+  return updated || null;
+}
+
+/**
+ * Delete a conversation and all its messages (cascade)
+ */
+export async function deleteConversation(id: string): Promise<void> {
+  await db.delete(conversations).where(eq(conversations.id, id));
+}
+
+/**
+ * Add a message to a conversation
+ */
+export async function addMessage(params: {
+  conversationId: string;
+  role: 'user' | 'assistant';
+  content: string;
+  toolResults?: Array<{
+    toolCallId: string;
+    toolName: string;
+    result: unknown;
+    isError?: boolean;
+  }>;
+  parts?: Array<{
+    type: string;
+    [key: string]: unknown;
+  }>;
+}): Promise<Message> {
+  // Debug: Log what we're about to save
+  console.log('[addMessage] Saving to DB:', {
+    conversationId: params.conversationId,
+    role: params.role,
+    contentLength: params.content?.length || 0,
+    partsCount: params.parts?.length || 0,
+    partsTypes: params.parts?.map((p) => ({
+      type: p?.type,
+      state: (p as any)?.state,
+      hasOutput: !!(p as any)?.output,
+    })),
+    toolResultsCount: params.toolResults?.length || 0,
+  });
+
+  // Update conversation's updatedAt timestamp
+  await db
+    .update(conversations)
+    .set({ updatedAt: new Date() })
+    .where(eq(conversations.id, params.conversationId));
+
+  const [message] = await db
+    .insert(messages)
+    .values({
+      conversationId: params.conversationId,
+      role: params.role,
+      content: params.content,
+      toolResults: params.toolResults || null,
+      parts: params.parts || null,
+    })
+    .returning();
+
+  // Debug: Log what was actually saved
+  console.log('[addMessage] Saved message:', {
+    id: message.id,
+    partsCount: (message.parts as any[])?.length || 0,
+    toolResultsCount: (message.toolResults as any[])?.length || 0,
+  });
+
+  return message;
+}
+
+/**
+ * Get messages for a conversation
+ */
+export async function getMessages(conversationId: string): Promise<Message[]> {
+  return db.query.messages.findMany({
+    where: eq(messages.conversationId, conversationId),
+    orderBy: [asc(messages.createdAt)],
+  });
+}
+
+/**
+ * Auto-generate title from first user message
+ */
+export async function generateConversationTitle(
+  conversationId: string,
+  firstMessage: string
+): Promise<Conversation | null> {
+  // Truncate and clean up the message for a title
+  const title = firstMessage
+    .slice(0, 50)
+    .trim()
+    .replace(/\n/g, ' ')
+    .replace(/\s+/g, ' ');
+
+  const displayTitle = title.length >= 50 ? `${title}...` : title;
+
+  return updateConversationTitle(conversationId, displayTitle);
+}
+
+// Re-export types for use in client code
+export type { Conversation, Message } from '@/lib/db';

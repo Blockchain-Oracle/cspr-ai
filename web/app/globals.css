@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@plugin "tailwindcss-animate";
+@plugin "@tailwindcss/typography";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Base - Light Mode */
+  --background: #ffffff;
+  --foreground: #0f172a;
+
+  /* Card */
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+
+  /* Popover */
+  --popover: #ffffff;
+  --popover-foreground: #0f172a;
+
+  /* Primary - CSPR Red */
+  --primary: #FF0420;
+  --primary-foreground: #ffffff;
+
+  /* Secondary - Slate */
+  --secondary: #f1f5f9;
+  --secondary-foreground: #0f172a;
+
+  /* Muted */
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  /* Accent */
+  --accent: #f1f5f9;
+  --accent-foreground: #0f172a;
+
+  /* Destructive */
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+
+  /* Border/Input */
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #FF0420;
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Chart Colors */
+  --chart-1: #FF0420;
+  --chart-2: #2a9d90;
+  --chart-3: #e9c46a;
+  --chart-4: #f4a261;
+  --chart-5: #e76f51;
+  
+  /* CSPR Specific */
+  --cspr-gradient-start: #4B7BF5;
+  --cspr-gradient-end: #7B5BF5;
+}
+
+.dark {
+  /* Base - Dark Mode (cspr.market inspired) */
+  --background: #0f1419;
+  --foreground: #ffffff;
+
+  /* Card */
+  --card: #1a1f2e;
+  --card-foreground: #ffffff;
+
+  /* Popover */
+  --popover: #1a1f2e;
+  --popover-foreground: #ffffff;
+
+  /* Primary */
+  --primary: #d84a4a;
+  --primary-foreground: #ffffff;
+
+  /* Secondary */
+  --secondary: #242936;
+  --secondary-foreground: #ffffff;
+
+  /* Muted */
+  --muted: #1f242f;
+  --muted-foreground: #94a3b8;
+
+  /* Accent */
+  --accent: #2d3748;
+  --accent-foreground: #ffffff;
+
+  /* Destructive */
+  --destructive: #dc2626;
+  --destructive-foreground: #fafafa;
+
+  /* Border/Input */
+  --border: #374151;
+  --input: #374151;
+  --ring: #d84a4a;
+
+  /* Chart Colors */
+  --chart-1: #d84a4a;
+  --chart-2: #ef4444;
+  --chart-3: #f87171;
+  --chart-4: #fb923c;
+  --chart-5: #fbbf24;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+  
+  --animate-accordion-down: accordion-down 0.2s ease-out;
+  --animate-accordion-up: accordion-up 0.2s ease-out;
+
+  @keyframes accordion-down {
+    from { height: 0; }
+    to { height: var(--radix-accordion-content-height); }
+  }
+  @keyframes accordion-up {
+    from { height: var(--radix-accordion-content-height); }
+    to { height: 0; }
+  }
+
+  @keyframes border-beam {
+    100% {
+      offset-distance: 100%;
+    }
+  }
+}
+
+/* Utilities */
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  /* CSPR Gradient Text */
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-600 dark:from-purple-400 dark:to-indigo-400;
+  }
+
+  /* Glass Effect */
+  .glass {
+    @apply bg-white/10 backdrop-blur-md border border-white/20;
+  }
+
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-md border border-white/10;
+  }
+
+  /* Hide Scrollbar */
+  .scrollbar-hide {
+    -ms-overflow-style: none !important;  /* IE and Edge */
+    scrollbar-width: none !important;  /* Firefox */
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none !important;  /* Chrome, Safari and Opera */
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

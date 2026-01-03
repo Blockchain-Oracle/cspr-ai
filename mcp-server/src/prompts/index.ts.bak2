@@ -1,0 +1,713 @@
+/**
+ * MCP Prompts for CSPR.AI
+ *
+ * Prompts are conversation templates that guide users through complex workflows.
+ * They provide structured assistance for common tasks.
+ */
+
+import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import * as z from "zod";
+
+/**
+ * Register all MCP prompts with the server
+ */
+export function registerAllPrompts(server: McpServer): void {
+  registerTokenPrompts(server);
+  registerNFTPrompts(server);
+  registerDAOPrompts(server);
+  registerDEXPrompts(server);
+  registerStakingPrompts(server);
+
+  console.error("✓ Registered MCP prompts");
+}
+
+/**
+ * Register token-related prompts
+ */
+function registerTokenPrompts(server: McpServer): void {
+  // Prompt: Create New Token
+  server.registerPrompt(
+    "create-token",
+    {
+      title: "Create New Token",
+      description: "Guide for deploying a new CEP-18 fungible token on Casper",
+      arguments: [{
+        name: "token_name",
+        description: "Full name of the token (e.g., 'My Project Token')",
+        required: false
+      }, {
+        title: "token_symbol",
+        description: "Token symbol (e.g., 'MPT')",
+        required: false
+      }]
+    },
+    async (args) => {
+      const tokenName = args.token_name || "[Token Name]";
+      const tokenSymbol = args.token_symbol || "[SYMBOL]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to create a new token on Casper Network.
+
+**Token Details:**
+- Name: ${tokenName}
+- Symbol: ${tokenSymbol}
+- Decimals: [How many decimals? Typically 9 or 18]
+- Initial Supply: [Total supply at deployment]
+- Minting: [Should the token be mintable after deployment? Yes/No]
+
+Please help me:
+1. Review my token parameters
+2. Explain the token standard (CEP-18)
+3. Estimate deployment costs
+4. Build the deployment transaction
+
+I'll sign the transaction with my CSPR.click wallet once it's ready.`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you create your ${tokenName} (${tokenSymbol}) token. Let me guide you through this step by step.
+
+First, let's finalize your token parameters. I have some questions:
+
+**1. Token Decimals**
+This determines the divisibility of your token. Common options:
+- 9 decimals (same as CSPR) - standard for Casper
+- 18 decimals (same as ETH) - if you plan to bridge to Ethereum
+
+**2. Initial Supply**
+How many tokens should exist at deployment? Remember:
+- If decimals = 9 and you want 1 million tokens, supply = 1,000,000,000,000,000
+- This is the total supply that will be minted to your address initially
+
+**3. Minting Capability**
+- **Mintable**: You can create more tokens after deployment (useful for rewards, inflation)
+- **Fixed Supply**: Total supply is locked at deployment (typical for governance tokens)
+
+**4. Deployment Cost**
+Deploying a token contract costs approximately **200-300 CSPR** in gas fees.
+
+Once you provide these details, I'll:
+1. Build your unsigned deployment transaction using casper_build_token_creation
+2. Show you exactly what will be deployed
+3. Guide you through signing with CSPR.click
+4. Explain how to verify your token on the explorer
+
+What are your preferences for decimals, initial supply, and minting?`
+          }
+        }]
+      };
+    }
+  );
+
+  // Prompt: Send Tokens
+  server.registerPrompt(
+    "send-tokens",
+    {
+      title: "Send Tokens",
+      description: "Guide for transferring CEP-18 tokens to another address",
+      arguments: [{
+        name: "recipient",
+        description: "Recipient's public key or account hash",
+        required: false
+      }, {
+        title: "amount",
+        description: "Amount of tokens to send",
+        required: false
+      }]
+    },
+    async (args) => {
+      const recipient = args.recipient || "[recipient public key]";
+      const amount = args.amount || "[amount]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to send ${amount} tokens to ${recipient}.
+
+Can you help me:
+1. Check my token balance first
+2. Build the transfer transaction
+3. Explain the gas costs
+4. Guide me through signing with my wallet`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you send tokens. Let's start by verifying the details:
+
+**Transfer Details:**
+- Recipient: ${recipient}
+- Amount: ${amount}
+
+Before we proceed, I need a few details:
+
+**1. Which token are you sending?**
+Please provide:
+- Token contract hash/address, OR
+- Token symbol (e.g., "CSPRAI", "USDC")
+
+**2. Your public key**
+What's your Casper public key? (starts with "01" or "02")
+
+Once I have this information, I'll:
+1. Check your current token balance using casper_get_tokens
+2. Verify the recipient address is valid
+3. Build the unsigned transfer transaction using casper_build_token_transfer
+4. Show you the exact transaction details before you sign
+5. Estimate gas costs (~5-10 CSPR for token transfers)
+
+What token are you sending and what's your public key?`
+          }
+        }]
+      };
+    }
+  );
+}
+
+/**
+ * Register NFT-related prompts
+ */
+function registerNFTPrompts(server: McpServer): void {
+  // Prompt: Mint NFT
+  server.registerPrompt(
+    "mint-nft",
+    {
+      title: "Mint NFT",
+      description: "Guide for minting a new NFT from a collection",
+      arguments: [{
+        title: "collection",
+        description: "NFT collection contract address",
+        required: false
+      }, {
+        title: "metadata_uri",
+        description: "IPFS or HTTP URL for NFT metadata",
+        required: false
+      }]
+    },
+    async (args) => {
+      const collection = args.collection || "[collection address]";
+      const metadataUri = args.metadata_uri || "[metadata URI]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to mint an NFT from the collection at ${collection}.
+
+Metadata URI: ${metadataUri}
+
+Can you help me:
+1. Verify the collection exists and I have minting rights
+2. Check if the metadata is accessible
+3. Build the minting transaction
+4. Guide me through signing`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you mint your NFT! Let's verify everything first.
+
+**NFT Details:**
+- Collection: ${collection}
+- Metadata: ${metadataUri}
+
+To proceed, I need:
+
+**1. Recipient Address**
+- Who should receive this NFT? (your address or someone else's)
+
+**2. NFT Name**
+- A display name for this specific NFT (e.g., "Genesis #1")
+
+**3. Minting Permission**
+- Is this a public mint (anyone can mint) or restricted?
+- If restricted, do you have minting rights?
+
+**4. Metadata Format**
+Your metadata should be JSON at the URI with:
+\`\`\`json
+{
+  "title": "NFT Name",
+  "description": "Description",
+  "image": "ipfs://...",
+  "attributes": [...]
+}
+\`\`\`
+
+Once I have the recipient and NFT name, I'll:
+1. Verify the collection contract using casper_get_nfts
+2. Build the unsigned minting transaction
+3. Show you estimated gas costs (~20-50 CSPR)
+4. Guide you through signing with CSPR.click
+
+What's the recipient address and NFT name?`
+          }
+        }]
+      };
+    }
+  );
+}
+
+/**
+ * Register DAO-related prompts
+ */
+function registerDAOPrompts(server: McpServer): void {
+  // Prompt: Create DAO Proposal
+  server.registerPrompt(
+    "create-dao-proposal",
+    {
+      title: "Create DAO Proposal",
+      description: "Guide for creating a new governance proposal",
+      arguments: [{
+        title: "dao_contract",
+        description: "DAO contract address",
+        required: false
+      }, {
+        title: "proposal_type",
+        description: "Type of proposal (mint_tokens, transfer_funds, update_parameter)",
+        required: false
+      }]
+    },
+    async (args) => {
+      const daoContract = args.dao_contract || "[DAO contract address]";
+      const proposalType = args.proposal_type || "[proposal type]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to create a ${proposalType} proposal for the DAO at ${daoContract}.
+
+Can you help me:
+1. Check if I have enough tokens to create proposals
+2. Understand the proposal requirements
+3. Draft the proposal
+4. Submit it for voting`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you create a DAO proposal. Let's gather the details:
+
+**DAO:** ${daoContract}
+**Proposal Type:** ${proposalType}
+
+First, let me explain the DAO governance process:
+
+**1. Proposal Requirements**
+- Minimum tokens required to propose (usually 100-1000 tokens)
+- I'll check your balance using casper_dao_get_info
+
+**2. Proposal Types Available**
+${proposalType === 'mint_tokens' ? `
+**Mint Tokens:**
+- Recipient address
+- Amount to mint
+- Use case: Ecosystem grants, team allocation, rewards
+
+Example: "Mint 10,000 tokens to treasury for grants program"
+` : proposalType === 'transfer_funds' ? `
+**Transfer Funds:**
+- Recipient address
+- Amount to transfer
+- Use case: Pay contributors, fund initiatives
+
+Example: "Transfer 5,000 tokens to developer for Q1 work"
+` : `
+**Update Parameter:**
+- Parameter name (quorum, voting_period, proposal_threshold)
+- New value
+- Use case: Adjust DAO governance rules
+
+Example: "Increase quorum from 10% to 15%"
+`}
+
+**3. Voting Process**
+- Voting period: Typically 3-7 days
+- Quorum required: Minimum % of tokens must vote
+- Approval threshold: Usually >50% "for" votes
+- **Snapshot voting**: Your tokens aren't locked!
+
+**4. What I Need From You**
+Please provide:
+- Your public key (to check eligibility)
+- Detailed proposal description
+- Specific parameters for your proposal type
+
+Once you provide these details, I'll:
+1. Verify you can create proposals
+2. Build the unsigned proposal transaction
+3. Show you the estimated timeline
+4. Guide you through submission
+
+What are the specific details for your proposal?`
+          }
+        }]
+      };
+    }
+  );
+
+  // Prompt: Vote on Proposal
+  server.registerPrompt(
+    "vote-on-proposal",
+    {
+      title: "Vote on DAO Proposal",
+      description: "Guide for voting on an active governance proposal",
+      arguments: [{
+        title: "dao_contract",
+        description: "DAO contract address",
+        required: false
+      }, {
+        title: "proposal_id",
+        description: "Proposal ID to vote on",
+        required: false
+      }]
+    },
+    async (args) => {
+      const daoContract = args.dao_contract || "[DAO contract]";
+      const proposalId = args.proposal_id || "[proposal ID]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to vote on proposal #${proposalId} in DAO ${daoContract}.
+
+Can you:
+1. Show me the proposal details
+2. Explain what it does
+3. Help me vote
+4. Show me the current vote tallies`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you vote on proposal #${proposalId}. Let me fetch the details.
+
+First, I need your public key to check your voting power.
+
+Once I have that, I'll:
+
+**1. Get Proposal Details**
+Using casper_dao_get_proposal, I'll show you:
+- Proposal description
+- Proposed action and parameters
+- Current vote tallies (for/against)
+- Voting deadline
+- Proposer information
+
+**2. Check Your Voting Power**
+- Your current token balance = your voting power
+- **Important**: Tokens are NOT locked when you vote (snapshot-based system)
+- You can still transfer/sell tokens after voting
+
+**3. Build Your Vote**
+You'll need to decide:
+- **Support**: Vote "for" (true) or "against" (false)
+- **Vote Weight**: How many of your tokens to use (up to your balance)
+
+**4. Submit Vote**
+I'll build the unsigned vote transaction and guide you through:
+- Transaction details
+- Gas costs (~2-5 CSPR)
+- Signing with CSPR.click
+- Verification that your vote was recorded
+
+What's your public key so I can check your voting power and show you the proposal?`
+          }
+        }]
+      };
+    }
+  );
+}
+
+/**
+ * Register DEX-related prompts
+ */
+function registerDEXPrompts(server: McpServer): void {
+  // Prompt: Swap Tokens
+  server.registerPrompt(
+    "swap-tokens",
+    {
+      title: "Swap Tokens on DEX",
+      description: "Guide for swapping tokens using the AMM DEX",
+      arguments: [{
+        title: "from_token",
+        description: "Token to swap from (symbol or address)",
+        required: false
+      }, {
+        title: "to_token",
+        description: "Token to swap to (symbol or address)",
+        required: false
+      }, {
+        title: "amount",
+        description: "Amount to swap",
+        required: false
+      }]
+    },
+    async (args) => {
+      const fromToken = args.from_token || "[input token]";
+      const toToken = args.to_token || "[output token]";
+      const amount = args.amount || "[amount]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to swap ${amount} ${fromToken} for ${toToken}.
+
+Can you help me:
+1. Find the best pool for this swap
+2. Calculate how much ${toToken} I'll receive
+3. Set slippage protection
+4. Execute the swap`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you swap ${amount} ${fromToken} for ${toToken}! Let's optimize your trade.
+
+**Swap Details:**
+- Input: ${amount} ${fromToken}
+- Output: ${toToken}
+- DEX: CSPR.AI AMM (constant product formula)
+
+To proceed, I need:
+
+**1. Find the Pool**
+I'll search for a ${fromToken}/${toToken} liquidity pool using casper_dex_get_pools.
+- If multiple pools exist, I'll recommend the one with deepest liquidity
+
+**2. Calculate Expected Output**
+Using the pool's reserves, I'll calculate:
+- Expected ${toToken} amount (before fees)
+- 0.3% swap fee
+- Final ${toToken} amount you'll receive
+- Price impact (how much the trade moves the price)
+
+**Warning Signs:**
+- Price impact >5% = large trade, consider splitting
+- Price impact >10% = WARNING: significant slippage!
+
+**3. Slippage Protection**
+You'll set a slippage tolerance:
+- Conservative: 0.5% (may fail if price moves)
+- Standard: 1% (recommended for most trades)
+- Aggressive: 2-3% (for volatile tokens or large trades)
+
+This ensures you get at least (expected - slippage%) ${toToken}.
+
+**4. Execute Swap**
+I'll build the unsigned swap transaction with:
+- Pool ID
+- Input token and amount
+- Minimum output (slippage protection)
+- Estimated gas: ~10-20 CSPR
+
+**What I Need From You:**
+- Your public key
+- Slippage tolerance (0.5%, 1%, 2%, etc.)
+- Confirmation that you want to proceed
+
+What's your public key and preferred slippage tolerance?`
+          }
+        }]
+      };
+    }
+  );
+
+  // Prompt: Add Liquidity
+  server.registerPrompt(
+    "add-liquidity",
+    {
+      title: "Add Liquidity to DEX",
+      description: "Guide for providing liquidity to earn trading fees",
+      arguments: [{
+        title: "token_a",
+        description: "First token in the pair",
+        required: false
+      }, {
+        title: "token_b",
+        description: "Second token in the pair",
+        required: false
+      }]
+    },
+    async (args) => {
+      const tokenA = args.token_a || "[token A]";
+      const tokenB = args.token_b || "[token B]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to provide liquidity for the ${tokenA}/${tokenB} pool.
+
+Can you help me:
+1. Understand how liquidity provision works
+2. Check the current pool ratio
+3. Calculate how much of each token I need
+4. Add my liquidity and receive LP tokens`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll guide you through adding liquidity to the ${tokenA}/${tokenB} pool!
+
+**How Liquidity Provision Works:**
+
+**1. Deposit Both Tokens**
+- You must deposit BOTH ${tokenA} and ${tokenB}
+- Ratio must match current pool ratio (50/50 by value)
+- Example: If pool is 1000 ${tokenA} : 2000 ${tokenB}, ratio is 1:2
+
+**2. Receive LP Tokens**
+- LP tokens represent your share of the pool
+- If pool has 100K total liquidity and you add 1K, you get 1% of LP tokens
+- Hold LP tokens to earn trading fees
+
+**3. Earn Trading Fees**
+- Every swap pays 0.3% fee
+- Fees accumulate in the pool
+- Your share grows over time (impermanent loss may apply)
+
+**4. Withdraw Anytime**
+- Burn LP tokens to get ${tokenA} and ${tokenB} back
+- You'll receive your proportional share of the pool
+- Includes accumulated fees!
+
+**Let me help you:**
+
+I need:
+- Your public key
+- Amount you want to provide (in ${tokenA} or ${tokenB})
+
+I'll then:
+1. Get current pool ratio using casper_dex_get_pool
+2. Calculate required amounts of BOTH tokens
+3. Calculate LP tokens you'll receive
+4. Check your balances of both tokens
+5. Build the unsigned add_liquidity transaction
+
+**Important:** Make sure you have BOTH tokens in your wallet before adding liquidity!
+
+What's your public key and how much are you looking to provide?`
+          }
+        }]
+      };
+    }
+  );
+}
+
+/**
+ * Register staking-related prompts
+ */
+function registerStakingPrompts(server: McpServer): void {
+  // Prompt: Stake CSPR
+  server.registerPrompt(
+    "stake-cspr",
+    {
+      title: "Stake CSPR with Validator",
+      description: "Guide for delegating CSPR to a validator to earn rewards",
+      arguments: [{
+        title: "amount",
+        description: "Amount of CSPR to stake",
+        required: false
+      }, {
+        title: "validator",
+        description: "Validator public key",
+        required: false
+      }]
+    },
+    async (args) => {
+      const amount = args.amount || "[amount]";
+      const validator = args.validator || "[validator public key]";
+
+      return {
+        messages: [{
+          role: "user",
+          content: {
+            type: "text",
+            text: `I want to stake ${amount} CSPR with validator ${validator}.
+
+Can you help me:
+1. Check if this validator is good
+2. Understand the staking process and rewards
+3. Build the staking transaction
+4. Explain when I'll start earning rewards`
+          }
+        }, {
+          role: "assistant",
+          content: {
+            type: "text",
+            text: `I'll help you stake ${amount} CSPR! Staking is a great way to earn passive income on Casper.
+
+**Staking Overview:**
+
+**1. How Staking Works**
+- Delegate CSPR to a validator
+- Validator uses your stake to secure the network
+- You earn rewards every era (~2 hours)
+- Minimum stake: 500 CSPR
+
+**2. Choosing a Validator**
+Let me help you evaluate validator ${validator}:
+
+I'll check using casper_get_validators:
+- **Performance Score**: Uptime and blocks produced
+- **Commission Rate**: % of rewards the validator keeps (you get the rest)
+- **Total Stake**: How much others have delegated
+- **Delegation Capacity**: Can they accept more stake?
+
+**Good validators have:**
+- 98-100% performance score
+- 5-10% commission (lower is better for you)
+- Not at capacity
+
+**3. Staking Process**
+- Stake activates at next era (within ~2 hours)
+- First rewards typically appear after 2-3 eras
+- Rewards auto-compound (no claiming needed)
+- Unstaking takes 7 eras (~14 hours)
+
+**4. Expected Returns**
+- Current network APY: ~8-12% (varies)
+- Your actual APY = network APY × (100% - validator commission)
+- Example: 10% network APY, 5% commission = 9.5% your APY
+
+**What I Need:**
+- Your public key
+- Confirmation of staking amount and validator
+
+Once you provide these, I'll:
+1. Verify validator is active and accepting delegations
+2. Check you have enough CSPR (min 500 + gas)
+3. Build unsigned delegation transaction using casper_build_delegation
+4. Show estimated rewards timeline
+5. Guide you through signing with CSPR.click
+
+**Ready to proceed?** What's your public key?`
+          }
+        }]
+      };
+    }
+  );
+}

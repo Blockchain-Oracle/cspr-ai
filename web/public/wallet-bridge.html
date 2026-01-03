@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CSPR.click Wallet Bridge</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: transparent;
+    }
+    #app {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #csprclick-ui {
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="csprclick-ui"></div>
+  </div>
+
+  <script>
+    // UI configuration - must specify containers
+    window.clickUIOptions = {
+      uiContainer: 'csprclick-ui',
+      rootAppElement: '#app',
+      showTopBar: false,
+      themeMode: 'dark'
+    };
+
+    // SDK configuration - using csprclick-template for local development
+    window.clickSDKOptions = {
+      appName: 'CSPR.AI',
+      appId: 'csprclick-template',
+      contentMode: 'iframe',
+      providers: ['casper-wallet', 'ledger', 'metamask-snap', 'casperdash']
+    };
+  </script>
+
+  <!-- Using v1.12.0 (stable) - compatible with wallet providers -->
+  <script defer src="https://cdn.cspr.click/ui/v1.12.0/csprclick-client-1.12.0.js"></script>
+
+  <script>
+    // Wait for DOM and SDK
+    document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM ready');
+    });
+
+    window.addEventListener('csprclick:loaded', () => {
+      console.log('CSPR.click SDK loaded!', window.csprclick);
+
+      // Check if there's already an active session
+      const existingAccount = window.csprclick.getActiveAccount();
+      console.log('Existing account on load:', existingAccount);
+
+      if (window.parent !== window) {
+        window.parent.postMessage({ type: 'bridge:ready' }, '*');
+
+        // If already signed in, notify parent
+        if (existingAccount) {
+          window.parent.postMessage({
+            type: 'wallet:existing_session',
+            payload: {
+              publicKey: existingAccount.public_key,
+              provider: existingAccount.provider,
+              balance: existingAccount.balance,
+              accountHash: existingAccount.account_hash
+            }
+          }, '*');
+        }
+      }
+    });
+
+    window.addEventListener('message', (event) => {
+      if (event.source !== window.parent) return;
+      const { type } = event.data || {};
+      console.log('Received message:', type);
+
+      if (!window.csprclick) {
+        console.warn('SDK not ready');
+        return;
+      }
+
+      switch (type) {
+        case 'wallet:signIn':
+          console.log('Calling csprclick.signIn()...');
+          try {
+            window.csprclick.signIn();
+            console.log('signIn() called successfully');
+
+            // Poll for account changes as fallback (events might not fire with contentMode: iframe)
+            let pollCount = 0;
+            const pollInterval = setInterval(() => {
+              pollCount++;
+              const account = window.csprclick.getActiveAccount();
+              console.log('Polling for account (attempt ' + pollCount + '):', account);
+
+              if (account) {
+                clearInterval(pollInterval);
+                console.log('Account found via polling!', account);
+                window.parent.postMessage({
+                  type: 'wallet:signed_in',
+                  payload: {
+                    publicKey: account.public_key,
+                    provider: account.provider,
+                    balance: account.balance,
+                    accountHash: account.account_hash
+                  }
+                }, '*');
+              } else if (pollCount >= 60) {
+                // Stop polling after 60 seconds
+                clearInterval(pollInterval);
+                console.log('Polling timeout - no account found');
+              }
+            }, 1000);
+          } catch (err) {
+            console.error('signIn() error:', err);
+          }
+          break;
+        case 'wallet:signOut':
+          window.csprclick.signOut();
+          break;
+        case 'wallet:disconnect':
+          window.csprclick.disconnect();
+          break;
+        case 'wallet:sign':
+          // Handle deploy signing request
+          const { payload: signPayload, requestId: signRequestId } = event.data;
+          console.log('Signing deploy...', signPayload);
+
+          if (!signPayload || !signPayload.deploy) {
+            window.parent.postMessage({
+              type: 'wallet:signResult',
+              payload: { error: 'No deploy provided', requestId: signRequestId }
+            }, '*');
+            break;
+          }
+
+          try {
+            const account = window.csprclick.getActiveAccount();
+            if (!account) {
+              window.parent.postMessage({
+                type: 'wallet:signResult',
+                payload: { error: 'No wallet connected', requestId: signRequestId }
+              }, '*');
+              break;
+            }
+
+            // IMPORTANT: Validate that deploy account matches connected wallet
+            // This prevents the confusing "switch accounts" prompt from CSPR.click
+            const deployAccount = signPayload.deploy?.header?.account;
+            const walletPublicKey = account.public_key;
+
+            console.log('Deploy account:', deployAccount);
+            console.log('Wallet public key:', walletPublicKey);
+
+            if (deployAccount && deployAccount !== walletPublicKey) {
+              // Account mismatch - provide clear error instead of triggering switch flow
+              const shortDeployAccount = deployAccount.slice(0, 16) + '...' + deployAccount.slice(-8);
+              const shortWalletKey = walletPublicKey.slice(0, 16) + '...' + walletPublicKey.slice(-8);
+
+              console.error('Account mismatch:', { deployAccount, walletPublicKey });
+              window.parent.postMessage({
+                type: 'wallet:signResult',
+                payload: {
+                  error: `Account mismatch: Deploy is for ${shortDeployAccount} but wallet is ${shortWalletKey}. Please reconnect with the correct wallet or rebuild the transaction with your connected wallet's public key.`,
+                  accountMismatch: true,
+                  deployAccount: deployAccount,
+                  walletPublicKey: walletPublicKey,
+                  requestId: signRequestId
+                }
+              }, '*');
+              break;
+            }
+
+            // Use CSPR.click SDK to sign the deploy
+            console.log('Calling csprclick.sign() with deploy...');
+
+            // CSPR.click SDK sign method
+            // If contentMode is 'iframe', the SDK handles the UI
+            window.csprclick.sign(signPayload.deploy, walletPublicKey)
+              .then(function(signedResult) {
+                console.log('Sign successful:', signedResult);
+                window.parent.postMessage({
+                  type: 'wallet:signResult',
+                  payload: {
+                    signedDeploy: signedResult.deploy || signedResult,
+                    deployHash: signedResult.deployHash || signedResult.deploy_hash,
+                    requestId: signRequestId
+                  }
+                }, '*');
+              })
+              .catch(function(signError) {
+                console.error('Sign error:', signError);
+                // Check if user cancelled
+                if (signError && (signError.cancelled || signError.message === 'User rejected')) {
+                  window.parent.postMessage({
+                    type: 'wallet:signResult',
+                    payload: { cancelled: true, requestId: signRequestId }
+                  }, '*');
+                } else {
+                  window.parent.postMessage({
+                    type: 'wallet:signResult',
+                    payload: {
+                      error: signError?.message || 'Failed to sign deploy',
+                      requestId: signRequestId
+                    }
+                  }, '*');
+                }
+              });
+          } catch (err) {
+            console.error('Sign exception:', err);
+            window.parent.postMessage({
+              type: 'wallet:signResult',
+              payload: {
+                error: err?.message || 'Signing failed',
+                requestId: signRequestId
+              }
+            }, '*');
+          }
+          break;
+      }
+    });
+
+    // Forward SDK events to parent
+    ['csprclick:signed_in', 'csprclick:switched_account', 'csprclick:signed_out', 'csprclick:disconnected', 'csprclick:error'].forEach(eventName => {
+      window.addEventListener(eventName, (evt) => {
+        console.log('SDK Event fired:', eventName, evt.detail);
+        const account = window.csprclick?.getActiveAccount();
+        console.log('Active account:', account);
+        if (window.parent !== window) {
+          const message = {
+            type: eventName.replace('csprclick:', 'wallet:'),
+            payload: account ? {
+              publicKey: account.public_key,
+              provider: account.provider,
+              balance: account.balance,
+              accountHash: account.account_hash
+            } : null
+          };
+          console.log('Forwarding to parent:', message);
+          window.parent.postMessage(message, '*');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
