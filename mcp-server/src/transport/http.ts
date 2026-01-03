@@ -244,7 +244,7 @@ export function createHttpTransport(config: HttpTransportConfig): HttpTransport 
 
     start: () => {
       return new Promise<void>((resolve, reject) => {
-        server = app.listen(resolvedConfig.port, () => {
+        server = app.listen(resolvedConfig.port, '0.0.0.0', () => {
           resolve();
         });
 
