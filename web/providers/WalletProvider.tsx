@@ -26,6 +26,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isConnecting, setIsConnecting] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
   const [isSigning, setIsSigning] = React.useState(false);
+  // Track when wallet popup should be visible (only during actual signing, not network wait)
+  const [isWalletPopupVisible, setIsWalletPopupVisible] = React.useState(false);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const pendingRequests = React.useRef<Map<string, (result: unknown) => void>>(new Map());
   const statusCallbacks = React.useRef<Map<string, (update: TransactionStatusUpdate) => void>>(new Map());
@@ -128,6 +130,18 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
               status: string;
               data: unknown
             };
+
+            // Hide wallet popup once user has signed (status = 'sent' or 'submitted')
+            // The transaction is now being processed by the network, no need for wallet UI
+            if (status === 'sent' || status === 'submitted') {
+              setIsWalletPopupVisible(false);
+            }
+
+            // Also hide on cancel or error
+            if (status === 'cancelled' || status === 'error') {
+              setIsWalletPopupVisible(false);
+            }
+
             // Status updates are handled by the callback passed to sendTransaction
             // The callback is stored in a separate map (statusCallbacks)
             const callback = statusCallbacks.current.get(requestId);
@@ -204,6 +218,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsSigning(true);
+    setIsWalletPopupVisible(true); // Show wallet popup for signing
     try {
       const result = await sendMessage('wallet:sign', {
         deploy: unsignedDeploy,
@@ -243,6 +258,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       };
     } finally {
       setIsSigning(false);
+      setIsWalletPopupVisible(false); // Hide wallet popup
     }
   }, [isReady, activeAccount, sendMessage]);
 
@@ -266,6 +282,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
 
     setIsSigning(true);
+    setIsWalletPopupVisible(true); // Show wallet popup for signing
 
     // Generate a unique request ID for this transaction
     const requestId = `send_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -341,6 +358,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       };
     } finally {
       setIsSigning(false);
+      setIsWalletPopupVisible(false); // Ensure popup is hidden
       // Clean up status callback
       statusCallbacks.current.delete(requestId);
     }
@@ -361,7 +379,8 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WalletContext.Provider value={value}>
-      {/* Iframe for CSPR.click SDK isolation - visible during connection or signing */}
+      {/* Iframe for CSPR.click SDK isolation - visible during connection or wallet popup */}
+      {/* Note: isWalletPopupVisible is for signing popup, isSigning tracks the entire tx process */}
       <iframe
         ref={iframeRef}
         src={`/wallet-bridge.html?appId=${encodeURIComponent(CSPRCLICK_APP_ID)}`}
@@ -369,11 +388,11 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           position: 'fixed',
           top: 0,
           left: 0,
-          width: (isConnecting || isSigning) ? '100vw' : 0,
-          height: (isConnecting || isSigning) ? '100vh' : 0,
+          width: (isConnecting || isWalletPopupVisible) ? '100vw' : 0,
+          height: (isConnecting || isWalletPopupVisible) ? '100vh' : 0,
           border: 'none',
-          zIndex: (isConnecting || isSigning) ? 9999 : -1,
-          background: (isConnecting || isSigning) ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
+          zIndex: (isConnecting || isWalletPopupVisible) ? 9999 : -1,
+          background: (isConnecting || isWalletPopupVisible) ? 'rgba(0, 0, 0, 0.5)' : 'transparent',
         }}
         title="Wallet Bridge"
         allow="clipboard-write"
