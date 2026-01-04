@@ -61,7 +61,6 @@ const navbar = (
             strokeLinecap="round"
             strokeLinejoin="round"
           />
-          <circle cx="16" cy="16" r="4" fill="currentColor" />
           <path
             d="M16 2V9"
             stroke="currentColor"
@@ -74,6 +73,7 @@ const navbar = (
             strokeWidth="2.5"
             strokeLinecap="round"
           />
+          <text x="16" y="18" fontFamily="ui-monospace, monospace" fontWeight="800" fontSize="10" fill="currentColor" textAnchor="middle">AI</text>
         </svg>
         <span style={{ fontFamily: 'ui-monospace, monospace', fontWeight: 700 }}>CSPR<span style={{ color: '#FF0420' }}>.AI</span></span>
       </span>

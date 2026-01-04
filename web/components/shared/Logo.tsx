@@ -46,7 +46,7 @@ export function Logo({
         strokeLinecap="round" 
         strokeLinejoin="round"
       />
-      <circle cx="16" cy="16" r="4" fill="currentColor" className="animate-pulse" />
+      <text x="16" y="18" fontFamily="ui-monospace, monospace" fontWeight="800" fontSize="10" fill="currentColor" textAnchor="middle">AI</text>
       <path 
         d="M16 2V9" 
         stroke="currentColor" 
