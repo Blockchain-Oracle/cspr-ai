@@ -32,6 +32,11 @@ import { CasperClient } from "../services/casper-client.js";
  * Schema for SDK-produced transaction JSON
  * Accepts the format output by Transaction.toJSON() with PascalCase keys
  * Supports all transaction types: Transfer, StoredContractByHash, ModuleBytes
+ *
+ * NOTE: We use a permissive schema here because:
+ * 1. The casper-js-sdk produces complex nested structures with tuples
+ * 2. JSON Schema doesn't support tuple types well (causes MCP validation errors)
+ * 3. The actual validation happens when reconstructing the Transaction object
  */
 const SignTransactionInputSchema = z.object({
   unsigned_deploy: z.object({
@@ -47,67 +52,10 @@ const SignTransactionInputSchema = z.object({
       timestamp: z.string().optional().describe("ISO timestamp"),
       ttl: z.string().describe("Time to live (e.g., '30m')"),
     }),
-    // Payment (always module_bytes with snake_case)
-    payment: z.object({
-      module_bytes: z.object({
-        args: z.array(z.tuple([
-          z.string(),
-          z.object({
-            cl_type: z.union([z.string(), z.any()]), // Can be string or complex type like {"Option": "U64"}
-            parsed: z.union([z.string(), z.number(), z.boolean()]).optional(),
-            bytes: z.string().optional(), // Payment args may have bytes instead of parsed
-          }),
-        ])),
-      }),
-    }),
-    // Session - one of transfer, stored_contract_by_hash, stored_contract_by_name, or module_bytes
-    session: z.object({
-      transfer: z.object({
-        args: z.array(z.tuple([
-          z.string(),
-          z.object({
-            cl_type: z.union([z.string(), z.any()]), // Can be string or complex type
-            parsed: z.union([z.string(), z.number(), z.boolean()]).optional(),
-            bytes: z.string().optional(),
-          }),
-        ])),
-      }).optional().describe("Native CSPR transfer"),
-      stored_contract_by_hash: z.object({
-        hash: z.string(),
-        entry_point: z.string(),
-        args: z.array(z.tuple([
-          z.string(),
-          z.object({
-            cl_type: z.union([z.string(), z.any()]),
-            parsed: z.union([z.string(), z.number(), z.boolean()]).optional(),
-            bytes: z.string().optional(),
-          }),
-        ])),
-      }).optional().describe("Contract call by hash"),
-      stored_contract_by_name: z.object({
-        name: z.string(),
-        entry_point: z.string(),
-        args: z.array(z.tuple([
-          z.string(),
-          z.object({
-            cl_type: z.union([z.string(), z.any()]),
-            parsed: z.union([z.string(), z.number(), z.boolean()]).optional(),
-            bytes: z.string().optional(),
-          }),
-        ])),
-      }).optional().describe("Contract call by name (delegation uses this)"),
-      module_bytes: z.object({
-        module_bytes: z.string(),
-        args: z.array(z.tuple([
-          z.string(),
-          z.object({
-            cl_type: z.union([z.string(), z.any()]),
-            parsed: z.union([z.string(), z.number(), z.boolean()]).optional(),
-            bytes: z.string().optional(),
-          }),
-        ])),
-      }).optional().describe("Contract deployment"),
-    }),
+    // Payment - permissive to accept SDK output format
+    payment: z.record(z.unknown()).describe("Payment configuration (module_bytes with args)"),
+    // Session - permissive to accept all transaction types
+    session: z.record(z.unknown()).describe("Session configuration (transfer, stored_contract_by_hash, stored_contract_by_name, or module_bytes)"),
     // Approvals array (empty for unsigned transactions) - OPTIONAL for simplified build tool output
     approvals: z.array(z.object({
       signer: z.string(),
