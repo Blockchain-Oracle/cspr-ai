@@ -26,10 +26,11 @@ AI-powered Model Context Protocol (MCP) server for Casper Network blockchain int
 
 ## Live Deployment
 
-The MCP server is live and ready to use:
+CSPR.AI is live and ready to use:
 
-| Endpoint | URL |
-|----------|-----|
+| Service | URL |
+|---------|-----|
+| **Web Dashboard** | https://cspr-ai.xyz |
 | **MCP API** | https://mcp.cspr-ai.xyz/mcp |
 | **Health Check** | https://mcp.cspr-ai.xyz/health |
 
