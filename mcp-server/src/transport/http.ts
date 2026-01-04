@@ -57,9 +57,20 @@ export function createHttpTransport(config: HttpTransportConfig): HttpTransport 
   // Parse JSON bodies with size limit to prevent DoS
   app.use(express.json({ limit: '1mb' }));
 
-  // CORS middleware
+  // CORS middleware - supports multiple origins (comma-separated) or wildcard
   app.use((req: Request, res: Response, next: NextFunction) => {
-    res.header('Access-Control-Allow-Origin', resolvedConfig.corsOrigin);
+    const origin = req.headers.origin;
+    let allowedOrigin = resolvedConfig.corsOrigin;
+
+    // Handle multiple origins (comma-separated)
+    if (resolvedConfig.corsOrigin !== '*' && origin) {
+      const origins = resolvedConfig.corsOrigin.split(',').map(o => o.trim());
+      if (origins.includes(origin)) {
+        allowedOrigin = origin;
+      }
+    }
+
+    res.header('Access-Control-Allow-Origin', allowedOrigin);
     res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type, mcp-session-id');
     res.header('Access-Control-Expose-Headers', 'mcp-session-id');
