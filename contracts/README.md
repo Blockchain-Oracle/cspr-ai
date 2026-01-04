@@ -59,12 +59,25 @@ Automated Market Maker for token swaps.
 
 ## Deployed Contracts (Testnet)
 
-| Contract | Package Hash |
-|----------|--------------|
-| Token | `contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05` |
-| NFT | `contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b` |
-| DAO | `contract-package-91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f` |
-| DEX | `contract-package-7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1` |
+All contracts are deployed on Casper Testnet and can be viewed on the block explorer:
+
+| Contract | Package Hash | Explorer Link |
+|----------|--------------|---------------|
+| **Token (CEP-18)** | `b481b1e8...3bc05` | [View on Testnet Explorer](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
+| **NFT Collection** | `195b64a1...583b` | [View on Testnet Explorer](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
+| **Governance DAO** | `91083a42...506f` | [View on Testnet Explorer](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
+| **AMM DEX** | `7f09f5c8...bca1` | [View on Testnet Explorer](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
+
+<details>
+<summary>Full Package Hashes</summary>
+
+```
+Token: contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05
+NFT:   contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b
+DAO:   contract-package-91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f
+DEX:   contract-package-7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1
+```
+</details>
 
 ## Development
 

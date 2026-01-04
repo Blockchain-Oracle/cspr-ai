@@ -162,6 +162,14 @@ CASPER_SECRET_KEY=your-private-key-here                  # PEM or hex format
 
 Pre-deployed CSPR.AI contracts on testnet:
 
+| Contract | Package Hash | Explorer |
+|----------|--------------|----------|
+| **Token** | `b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05` | [View on Explorer](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
+| **NFT** | `195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b` | [View on Explorer](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
+| **DAO** | `91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f` | [View on Explorer](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
+| **DEX** | `7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1` | [View on Explorer](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
+
+Environment variables:
 ```bash
 CASPER_TOKEN_CONTRACT_ADDRESS=contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05
 CASPER_NFT_CONTRACT_ADDRESS=contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b
@@ -240,7 +248,41 @@ curl -X POST http://localhost:3001/mcp \
 
 ## Integration
 
-### Claude Desktop
+### HTTP Transport (Recommended for Web)
+
+For web integrations, connect to an MCP server running in HTTP mode.
+
+**Option 1: Use the live deployment**
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "https://mcp.cspr-ai.xyz/mcp"
+    }
+  }
+}
+```
+
+**Option 2: Run locally**
+
+Start the server in HTTP mode:
+```bash
+cd mcp-server
+MCP_TRANSPORT=http pnpm dev
+```
+
+Then configure your MCP client:
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "http://localhost:3001/mcp"
+    }
+  }
+}
+```
+
+### Claude Desktop (stdio mode)
 
 1. **Build the server**
 ```bash

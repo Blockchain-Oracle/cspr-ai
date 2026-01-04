@@ -2,6 +2,14 @@
 
 AI-powered Model Context Protocol (MCP) server for Casper Network blockchain integration. Enables natural language interaction with Casper blockchain through Claude, Cursor, and other MCP-compatible AI assistants.
 
+## Documentation
+
+| Component | Description | Link |
+|-----------|-------------|------|
+| **MCP Server** | Model Context Protocol server with 50+ tools | [mcp-server/README.md](./mcp-server/README.md) |
+| **Smart Contracts** | Rust/Odra contracts (Token, NFT, DAO, DEX) | [contracts/README.md](./contracts/README.md) |
+| **Web Dashboard** | Next.js web interface with CSPR.click wallet | [web/README.md](./web/README.md) |
+
 ## Table of Contents
 
 - [Overview](#overview)
@@ -12,6 +20,7 @@ AI-powered Model Context Protocol (MCP) server for Casper Network blockchain int
   - [MCP Server Setup](#mcp-server-setup)
   - [Web Dashboard Setup](#web-dashboard-setup)
 - [MCP Integration](#mcp-integration)
+  - [HTTP Transport](#http-transport-recommended)
   - [Claude Desktop](#claude-desktop)
   - [Cursor IDE](#cursor-ide)
   - [Claude Code](#claude-code)
@@ -33,6 +42,17 @@ CSPR.AI is live and ready to use:
 | **Web Dashboard** | https://cspr-ai.xyz |
 | **MCP API** | https://mcp.cspr-ai.xyz/mcp |
 | **Health Check** | https://mcp.cspr-ai.xyz/health |
+
+### Deployed Smart Contracts (Testnet)
+
+| Contract | Description | Explorer Link |
+|----------|-------------|---------------|
+| **Token (CEP-18)** | Fungible token with mint/burn | [View on Testnet](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
+| **NFT Collection** | NFT with metadata support | [View on Testnet](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
+| **Governance DAO** | Proposal and voting system | [View on Testnet](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
+| **AMM DEX** | Token swaps and liquidity pools | [View on Testnet](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
+
+See [contracts/README.md](./contracts/README.md) for full documentation.
 
 ## Overview
 
@@ -278,6 +298,40 @@ pnpm dev
 The web dashboard will be available at `http://localhost:3000`
 
 ## MCP Integration
+
+### HTTP Transport (Recommended)
+
+For web integrations, use HTTP transport to connect to the MCP server.
+
+**Option 1: Use the live deployment**
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "https://mcp.cspr-ai.xyz/mcp"
+    }
+  }
+}
+```
+
+**Option 2: Run locally**
+
+Start the MCP server in HTTP mode:
+```bash
+cd mcp-server
+MCP_TRANSPORT=http pnpm dev
+```
+
+Then configure your MCP client:
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "http://localhost:3001/mcp"
+    }
+  }
+}
+```
 
 ### Claude Desktop
 
