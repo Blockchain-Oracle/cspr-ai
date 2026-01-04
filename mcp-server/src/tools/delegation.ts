@@ -108,6 +108,7 @@ export function registerDelegationTool(server: McpServer, client: CasperClient):
             session: {
               stored_contract_by_hash: {
                 hash: AUCTION_CONTRACT_HASH,
+                hash_type: "hash",
                 entry_point: "delegate",
                 args: [
                   ["validator", { cl_type: "PublicKey", parsed: params.validator_public_key }],

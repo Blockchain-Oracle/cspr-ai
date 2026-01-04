@@ -279,29 +279,12 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
       }
 
     } else if (transactionJson.session.stored_contract_by_hash) {
-      // Contract call
+      // Contract call (including delegation to auction contract)
       const contractCall = transactionJson.session.stored_contract_by_hash;
+      const argsMap: Record<string, unknown> = {};
 
-      // Check if this is a delegation to the auction contract
-      // Use NativeDelegateBuilder for proper Casper 1.5 delegation deploy format
-      if (contractCall.hash === AUCTION_CONTRACT_HASH && contractCall.entry_point === 'delegate') {
-        const delegateArgs = contractCall.args;
-        const validatorArg = delegateArgs.find(([key]: [string, any]) => key === 'validator')?.[1]?.parsed as string;
-        const amountArg = delegateArgs.find(([key]: [string, any]) => key === 'amount')?.[1]?.parsed as string;
-
-        builder = new NativeDelegateBuilder()
-          .from(senderKey)
-          .validator(PublicKey.fromHex(validatorArg))
-          .amount(amountArg)
-          .chainName(chainName)
-          .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
-          .payment(paymentAmount);
-      } else {
-        // Regular contract call
-        const argsMap: Record<string, unknown> = {};
-
-        // Convert args array to map with proper CLValue construction
-        for (const [key, value] of contractCall.args) {
+      // Convert args array to map with proper CLValue construction
+      for (const [key, value] of contractCall.args) {
         const clType = value.cl_type as string;
         const parsed = value.parsed;
 
@@ -347,6 +330,10 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
           // ByteArray - parsed should be an array of numbers
           const bytesArray = parsed as number[];
           argsMap[key] = CLValue.newCLByteArray(Uint8Array.from(bytesArray));
+        } else if (clType === "PublicKey") {
+          // PublicKey - used in auction contract (delegate, undelegate, etc.)
+          const publicKey = PublicKey.fromHex(parsed as string);
+          argsMap[key] = CLValue.newCLPublicKey(publicKey);
         } else {
           // For other types, try to use the parsed value directly
           argsMap[key] = parsed;
@@ -378,29 +365,11 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
         .runtimeArgs(Args.fromMap(argsMap as Record<string, never>))
         .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
         .payment(paymentAmount);
-      }
 
     } else if ((transactionJson.session as any).stored_contract_by_name) {
-      // Check if this is a delegation to the auction contract
+      // stored_contract_by_name is deprecated - use stored_contract_by_hash instead
       const contractCall = (transactionJson.session as any).stored_contract_by_name;
-
-      if (contractCall.name === 'auction' && contractCall.entry_point === 'delegate') {
-        // Native delegation using NativeDelegateBuilder
-        const delegateArgs = contractCall.args;
-        const validatorArg = delegateArgs.find(([key]: [string, any]) => key === 'validator')?.[1]?.parsed as string;
-        const amountArg = delegateArgs.find(([key]: [string, any]) => key === 'amount')?.[1]?.parsed as string;
-
-        builder = new NativeDelegateBuilder()
-          .from(senderKey)
-          .validator(PublicKey.fromHex(validatorArg))
-          .amount(amountArg)
-          .chainName(chainName)
-          .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
-          .payment(paymentAmount);
-      } else {
-        // Other stored_contract_by_name calls not supported
-        throw new Error(`stored_contract_by_name for ${contractCall.name}/${contractCall.entry_point} is not supported. Use stored_contract_by_hash instead.`);
-      }
+      throw new Error(`stored_contract_by_name for ${contractCall.name}/${contractCall.entry_point} is not supported. Use stored_contract_by_hash instead.`);
 
     } else if (transactionJson.session.module_bytes) {
       // Contract deployment not supported yet (requires WASM bytes)
