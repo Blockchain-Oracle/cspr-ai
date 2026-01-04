@@ -5,7 +5,7 @@ import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { cn } from '@/components/utils';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, FileCode, Wallet } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Wallet } from 'lucide-react';
 
 export interface UnsignedDeployData {
   type: string;
@@ -49,37 +49,6 @@ export function UnsignedDeployCard({
   const [showRaw, setShowRaw] = React.useState(false);
 
   const isMainnet = data.network.toLowerCase() === 'casper' || data.network.toLowerCase() === 'mainnet';
-
-  // Analyze the deploy structure to determine what type it is
-  const deployAnalysis = React.useMemo(() => {
-    const deploy = data.unsigned_deploy as any;
-    const session = deploy?.session;
-
-    // Check session type using PascalCase (Casper SDK convention)
-    // NOT payment.ModuleBytes which ALL deploys have!
-    const isNativeTransfer = session?.Transfer !== undefined;
-    const isContractCall = session?.StoredContractByHash !== undefined;
-    const isContractDeployment = session?.ModuleBytes !== undefined;
-
-    // Only check for placeholder in contract deployments
-    let needsWasmCompilation = false;
-    if (isContractDeployment) {
-      const sessionStr = JSON.stringify(session.ModuleBytes);
-      needsWasmCompilation = sessionStr.includes('[WASM_BYTES_PLACEHOLDER]');
-    }
-
-    return {
-      isNativeTransfer,
-      isContractCall,
-      isContractDeployment,
-      needsWasmCompilation,
-    };
-  }, [data.unsigned_deploy]);
-
-  // Can sign if it's a transfer, contract call, or a contract deployment with real WASM
-  const canSign = deployAnalysis.isNativeTransfer ||
-                  deployAnalysis.isContractCall ||
-                  (deployAnalysis.isContractDeployment && !deployAnalysis.needsWasmCompilation);
 
   return (
     <motion.div
@@ -181,24 +150,6 @@ export function UnsignedDeployCard({
                 )}
             </div>
 
-            {/* WASM Deploy Notice - only show for contract deployments with placeholder */}
-            {deployAnalysis.needsWasmCompilation && (
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
-                    <div className="flex items-start gap-2">
-                        <FileCode className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs space-y-1">
-                            <p className="font-semibold">Contract Deployment Requires WASM</p>
-                            <p className="text-amber-300/80">
-                                This deploy contains a WASM bytecode placeholder. The MCP server needs pre-compiled WASM files.
-                            </p>
-                            <p className="text-amber-300/80">
-                                Ensure WASM files exist in <code className="bg-black/30 px-1 rounded">contracts/wasm/</code>
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {/* Transaction Hash Display (when submitted to network) */}
             {isSigned && deployHash && (
                 <div className="relative overflow-hidden rounded-xl border-2 border-emerald-500/30 dark:border-emerald-400/40 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/50 dark:to-teal-950/50 backdrop-blur-sm shadow-lg">
@@ -289,21 +240,21 @@ export function UnsignedDeployCard({
                     variant="primary"
                     fullWidth
                     size="lg"
-                    onClick={canSign ? onSign : undefined}
+                    onClick={onSign}
                     isLoading={isLoading}
-                    disabled={isSigned || isCancelled || !canSign || isLoading}
+                    disabled={isSigned || isCancelled || isLoading}
                     className={cn(
                         "font-semibold shadow-lg transition-all",
-                        canSign && !isLoading && !isSigned && !isCancelled && "hover:scale-[1.02]",
-                        (!canSign || isLoading || isSigned || isCancelled) && "opacity-50 cursor-not-allowed",
+                        !isLoading && !isSigned && !isCancelled && "hover:scale-[1.02]",
+                        (isLoading || isSigned || isCancelled) && "opacity-50 cursor-not-allowed",
                         isMainnet ? "bg-red-600 hover:bg-red-700 shadow-red-500/20" : "shadow-primary/25"
                     )}
                     leftIcon={isSigned ? <Check className="h-5 w-5" /> : isCancelled ? <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> : <Wallet className="h-5 w-5" />}
                 >
-                    {isSigned ? "Transaction Submitted" : isCancelled ? "Transaction Cancelled" : !canSign ? "Compilation Required" : isLoading ? "Signing & Submitting..." : "Sign & Submit"}
+                    {isSigned ? "Transaction Submitted" : isCancelled ? "Transaction Cancelled" : isLoading ? "Signing & Submitting..." : "Sign & Submit"}
                 </Button>
 
-                {!isSigned && !isCancelled && canSign && (
+                {!isSigned && !isCancelled && (
                     <Button
                         variant="ghost"
                         onClick={onCancel}
@@ -318,7 +269,7 @@ export function UnsignedDeployCard({
                 )}
             </div>
 
-            {isMainnet && canSign && (
+            {isMainnet && (
                 <div className="flex items-center gap-2 justify-center text-xs text-red-400 mt-2">
                     <AlertTriangle className="h-3 w-3" />
                     <span>This is a real transaction on Mainnet. Proceed with caution.</span>
