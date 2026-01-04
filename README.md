@@ -84,46 +84,9 @@ CSPR.AI provides a bridge between AI assistants and the Casper Network blockchai
 
 ## Architecture
 
-```mermaid
-graph TB
-    subgraph "AI Clients"
-        A[Claude Desktop]
-        B[Cursor IDE]
-        C[Claude Code]
-        D[Web Dashboard]
-    end
-
-    subgraph "CSPR.AI MCP Server"
-        E[MCP Protocol Layer]
-        F[Tool Handlers]
-        G[Casper RPC Client]
-        H[CSPR.cloud API Client]
-    end
-
-    subgraph "Casper Network"
-        I[RPC Nodes]
-        J[CSPR.cloud API]
-        K[Smart Contracts]
-    end
-
-    A -->|stdio| E
-    B -->|stdio| E
-    C -->|stdio| E
-    D -->|HTTP| E
-
-    E --> F
-    F --> G
-    F --> H
-
-    G --> I
-    H --> J
-    G --> K
-
-    style E fill:#4CAF50
-    style F fill:#2196F3
-    style G fill:#FF9800
-    style H fill:#FF9800
-```
+<p align="center">
+  <img src="./assets/cspr-architecture.png" alt="CSPR.AI Architecture" width="100%" />
+</p>
 
 ### Transport Modes
 
