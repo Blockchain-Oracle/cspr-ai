@@ -1,0 +1,151 @@
+---
+title: Error Codes
+description: Complete error code reference for CSPR.AI
+---
+
+import { Callout } from 'nextra/components'
+
+# Error Codes
+
+Reference for all error codes returned by the CSPR.AI MCP server.
+
+## MCP Standard Errors
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32700 | Parse Error | Invalid JSON |
+| -32600 | Invalid Request | Missing required fields |
+| -32601 | Method Not Found | Unknown method |
+| -32602 | Invalid Params | Invalid parameters |
+| -32603 | Internal Error | Server error |
+
+## CSPR.AI Custom Errors
+
+### Account Errors (-32100 to -32199)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32100 | Invalid Public Key | Public key format invalid |
+| -32101 | Account Not Found | Account doesn't exist |
+| -32102 | Insufficient Balance | Not enough CSPR |
+| -32103 | Self Transfer | Cannot transfer to self |
+
+### Validator Errors (-32200 to -32299)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32200 | Validator Not Found | Validator doesn't exist |
+| -32201 | Invalid Delegation | Delegation amount invalid |
+| -32202 | Below Minimum | Below 500 CSPR minimum |
+
+### Transaction Errors (-32300 to -32399)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32300 | Deploy Not Found | Deploy hash invalid |
+| -32301 | Deploy Failed | Transaction execution failed |
+| -32302 | Signing Error | Failed to sign transaction |
+| -32303 | Submission Error | Failed to submit to network |
+
+### Token Errors (-32400 to -32499)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32400 | Contract Not Found | Token contract not found |
+| -32401 | Insufficient Tokens | Not enough token balance |
+| -32402 | Not Authorized | Missing minter role |
+| -32403 | Minting Disabled | Contract doesn't allow minting |
+
+### NFT Errors (-32500 to -32599)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32500 | Collection Not Found | NFT contract not found |
+| -32501 | Token Not Found | Token ID doesn't exist |
+| -32502 | Not Owner | Caller is not token owner |
+| -32503 | Max Supply Reached | Cannot mint more NFTs |
+
+### DAO Errors (-32600 to -32699)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32600 | Proposal Not Found | Proposal ID invalid |
+| -32601 | Voting Closed | Voting period ended |
+| -32602 | Already Voted | Cannot vote twice |
+| -32603 | Quorum Not Reached | Insufficient votes |
+| -32604 | Not Approved | Proposal not approved |
+
+### DEX Errors (-32700 to -32799)
+
+| Code | Name | Description |
+|------|------|-------------|
+| -32700 | Pool Not Found | Pool ID invalid |
+| -32701 | Insufficient Liquidity | Not enough reserves |
+| -32702 | Slippage Exceeded | Price moved too much |
+| -32703 | Pool Exists | Token pair already has pool |
+
+## Error Response Format
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32100,
+    "message": "Invalid public key format",
+    "data": {
+      "provided": "invalid-key",
+      "expected": "01... (66 chars) or 02... (68 chars)"
+    }
+  }
+}
+```
+
+## Handling Errors
+
+### JavaScript Example
+
+```typescript
+try {
+  const result = await callMcpTool('casper_get_balance', {
+    public_key: userKey
+  })
+} catch (error) {
+  switch (error.code) {
+    case -32100:
+      showError('Invalid wallet address format')
+      break
+    case -32101:
+      showError('Account not found on network')
+      break
+    default:
+      showError('An error occurred: ' + error.message)
+  }
+}
+```
+
+## Network Errors
+
+Network-related errors from Casper RPC:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Timeout | RPC not responding | Retry or use different node |
+| Rate Limited | Too many requests | Implement backoff |
+| Invalid Response | Node issue | Try alternative RPC |
+
+<Callout type="info">
+  For network errors, consider implementing exponential backoff and node failover.
+</Callout>
+
+## Debugging Tips
+
+1. **Check Error Code** - Use the code for programmatic handling
+2. **Read Message** - Human-readable description
+3. **Inspect Data** - Additional context in data field
+4. **Log Full Error** - For debugging, log the entire error object
+
+## Next Steps
+
+- [HTTP Transport](/docs/api-reference/http-transport) - API endpoints
+- [MCP Tools](/docs/mcp-tools) - Tool reference

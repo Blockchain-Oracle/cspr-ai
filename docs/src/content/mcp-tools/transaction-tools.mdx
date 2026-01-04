@@ -1,0 +1,215 @@
+---
+title: Transaction Tools
+description: Tools for building and monitoring Casper Network transactions
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Transaction Tools
+
+Tools for building, signing, and monitoring transactions.
+
+## casper_build_transfer
+
+Build an unsigned CSPR transfer transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Sender's public key |
+| `to_public_key` | string | Yes | Recipient's public key |
+| `amount_cspr` | number | Yes | Amount in CSPR (e.g., 100.5) |
+
+### Example
+
+```
+Query: Build a transfer of 100 CSPR from 01abc... to 01def...
+```
+
+### Response
+
+```json
+{
+  "type": "transfer",
+  "from": "01abc...",
+  "to": "01def...",
+  "amount_cspr": 100,
+  "amount_motes": "100000000000",
+  "network": "testnet",
+  "requires_signature": true,
+  "unsigned_deploy": { ... }
+}
+```
+
+<Callout type="warning">
+  Self-transfers are not allowed on Casper 2.0. The sender and recipient must be different accounts.
+</Callout>
+
+---
+
+## casper_build_delegation
+
+Build an unsigned stake delegation transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `delegator_public_key` | string | Yes | Your public key |
+| `validator_public_key` | string | Yes | Validator to delegate to |
+| `amount_cspr` | number | Yes | Amount in CSPR (minimum: 500) |
+
+### Example
+
+```
+Query: Stake 500 CSPR with validator 01xyz...
+```
+
+<Callout type="info">
+  **Minimum delegation is 500 CSPR.** Amounts below this will fail.
+</Callout>
+
+---
+
+## casper_get_deploy_status
+
+Check the status of a transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `deploy_hash` | string | Yes | 64-character hex deploy hash |
+| `response_format` | string | No | `markdown` or `json` |
+
+### Response
+
+```json
+{
+  "deploy_hash": "abc123...",
+  "status": "success",
+  "block_hash": "def456...",
+  "cost_cspr": "0.1",
+  "timestamp": "2024-01-01T12:00:00Z",
+  "error_message": null
+}
+```
+
+### Status Values
+
+| Status | Description |
+|--------|-------------|
+| `success` | Transaction executed successfully |
+| `failed` | Transaction failed (see error_message) |
+| `pending` | Transaction not yet processed |
+
+---
+
+## casper_check_deploy_status
+
+Quick status check for a deploy.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `deploy_hash` | string | Yes | Deploy hash to check |
+
+### Response
+
+Returns simplified status for quick verification.
+
+---
+
+## casper_get_deploy
+
+Get detailed information about a deploy.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `deploy_hash` | string | Yes | Deploy hash to query |
+
+### Response
+
+Returns complete deploy information including:
+
+- Execution results
+- Cost and gas consumed
+- Error messages (if failed)
+- Block hash and height
+- Contract called
+- Deploy arguments
+
+---
+
+## casper_sign_and_submit_transaction
+
+Sign and submit a transaction (requires secret key).
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `unsigned_deploy` | object | Yes | Unsigned deploy from build tools |
+
+### Example Flow
+
+<Steps>
+### Build the Transaction
+
+```
+Build a transfer of 100 CSPR from 01abc... to 01def...
+```
+
+### Sign and Submit
+
+```
+Sign and submit this transaction
+```
+
+### Track Status
+
+```
+Check the status of deploy abc123...
+```
+</Steps>
+
+<Callout type="error">
+  This tool only works when `CASPER_SECRET_KEY` is configured. For web users, signing should be done via CSPR.click wallet.
+</Callout>
+
+---
+
+## casper_wallet_status
+
+Check if a wallet is configured for signing.
+
+### Response
+
+```json
+{
+  "configured": true,
+  "public_key": "01abc...",
+  "network": "testnet"
+}
+```
+
+## Transaction Lifecycle
+
+```
+Build → Sign → Submit → Pending → Success/Failed
+```
+
+1. **Build** - Create unsigned transaction
+2. **Sign** - Sign with wallet (CSPR.click or secret key)
+3. **Submit** - Send to network
+4. **Pending** - Waiting for block inclusion
+5. **Success/Failed** - Final status
+
+## Next Steps
+
+- [Token Tools](/docs/mcp-tools/token-tools) - Transfer tokens
+- [NFT Tools](/docs/mcp-tools/nft-tools) - Transfer NFTs

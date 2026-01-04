@@ -1,0 +1,140 @@
+---
+title: Smart Contracts Overview
+description: Production-ready Odra smart contracts for Casper Network
+---
+
+import { Callout } from 'nextra/components'
+import { DocCards, DocCard } from '@/components/doc-cards'
+
+# Smart Contracts
+
+CSPR.AI includes production-ready smart contracts built with the [Odra](https://odra.dev) framework.
+
+## Deployed Contracts (Testnet)
+
+<Callout type="info">
+  All contracts are deployed and ready to use on Casper Testnet.
+</Callout>
+
+| Contract | Package Hash | Explorer |
+|----------|--------------|----------|
+| **Token (CEP-18)** | `b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05` | [View](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
+| **NFT Collection** | `195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b` | [View](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
+| **Governance DAO** | `91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f` | [View](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
+| **AMM DEX** | `7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1` | [View](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
+
+## Contract Documentation
+
+<DocCards cols={2}>
+  <DocCard
+    title="CEP-18 Token"
+    description="Fungible token with mint, burn, and transfer"
+    href="/smart-contracts/token"
+  />
+  <DocCard
+    title="NFT Collection"
+    description="Non-fungible token collection with metadata"
+    href="/smart-contracts/nft"
+  />
+  <DocCard
+    title="DAO Governance"
+    description="On-chain governance with proposals and voting"
+    href="/smart-contracts/dao"
+  />
+  <DocCard
+    title="DEX (AMM)"
+    description="Automated market maker with liquidity pools"
+    href="/smart-contracts/dex"
+  />
+</DocCards>
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Language | Rust |
+| Framework | Odra 1.2+ |
+| Standards | CEP-18, CEP-78 |
+| Testing | OdraVM, CasperVM |
+
+## Project Structure
+
+```
+contracts/
+├── cep18/           # CEP-18 token contract
+│   ├── src/
+│   │   └── lib.rs
+│   └── Odra.toml
+├── nft/             # NFT collection contract
+├── dao/             # DAO governance contract
+├── dex/             # DEX AMM contract
+└── Cargo.toml       # Workspace config
+```
+
+## Prerequisites
+
+Before working with contracts, install:
+
+```bash
+# Install Rust
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+# Add wasm32 target
+rustup target add wasm32-unknown-unknown
+
+# Install cargo-odra
+cargo install cargo-odra
+```
+
+## Building Contracts
+
+```bash
+cd contracts
+
+# Build all contracts
+cargo odra build
+
+# Build specific contract
+cargo odra build -c cep18
+```
+
+## Testing
+
+<Callout type="info">
+  Always test with both OdraVM (fast) and CasperVM (accurate) before deployment.
+</Callout>
+
+```bash
+# Fast iteration with OdraVM
+cargo odra test
+
+# Accurate validation with CasperVM
+cargo odra test -b casper
+```
+
+## Deployment
+
+Contracts are deployed using the MCP tools:
+
+1. Build the contract WASM
+2. Use AI to deploy with appropriate parameters
+3. Track deployment status
+4. Save contract address for future use
+
+## Security Considerations
+
+All contracts follow security best practices:
+
+- **Access Control**: Using Odra's `Ownable` module
+- **Input Validation**: All entry points validate inputs
+- **Events**: State changes emit events for tracking
+- **No Private Keys**: MCP tools never handle private keys
+
+## Next Steps
+
+Explore each contract:
+
+- [CEP-18 Token](/smart-contracts/token) - Deploy fungible tokens
+- [NFT Collection](/smart-contracts/nft) - Create NFT collections
+- [DAO](/smart-contracts/dao) - Build governance systems
+- [DEX](/smart-contracts/dex) - Create liquidity pools

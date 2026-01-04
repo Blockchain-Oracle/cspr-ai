@@ -1,0 +1,206 @@
+---
+title: DEX (AMM) Contract
+description: Automated market maker with liquidity pools and swaps
+---
+
+import { Callout } from 'nextra/components'
+
+# DEX (AMM) Contract
+
+A decentralized exchange using the constant product automated market maker (AMM) model.
+
+## Features
+
+- Multiple liquidity pools
+- Constant product formula (x * y = k)
+- LP tokens for liquidity providers
+- Configurable swap fees
+- Slippage protection
+
+## Contract Structure
+
+```rust
+#[odra::module]
+pub struct Dex {
+    pools: Mapping<u64, Pool>,
+    lp_balances: Mapping<(u64, Address), U256>,
+    pool_count: Var<u64>,
+    fee_bps: Var<u32>,
+    ownable: SubModule<Ownable>,
+}
+
+pub struct Pool {
+    token_a: Address,
+    token_b: Address,
+    reserve_a: U256,
+    reserve_b: U256,
+    lp_supply: U256,
+}
+```
+
+## AMM Formula
+
+The DEX uses the constant product formula:
+
+```
+x * y = k
+```
+
+Where:
+- `x` = reserve of token A
+- `y` = reserve of token B
+- `k` = constant product
+
+### Swap Calculation
+
+```
+amount_out = (amount_in * fee_factor * reserve_out) / (reserve_in + amount_in * fee_factor)
+fee_factor = 10000 - fee_bps
+```
+
+### LP Token Calculation
+
+**First Provider:**
+```
+lp_tokens = sqrt(amount_a * amount_b)
+```
+
+**Subsequent Providers:**
+```
+lp_tokens = min(amount_a/reserve_a, amount_b/reserve_b) * lp_supply
+```
+
+## Entry Points
+
+### Create Pool
+
+```rust
+fn create_pool(&mut self, token_a: Address, token_b: Address) -> u64
+```
+
+Create a new liquidity pool. Returns pool ID.
+
+### Add Liquidity
+
+```rust
+fn add_liquidity(
+    &mut self,
+    pool_id: u64,
+    amount_a: U256,
+    amount_b: U256,
+    min_lp_tokens: U256
+) -> U256
+```
+
+Add liquidity and receive LP tokens.
+
+### Remove Liquidity
+
+```rust
+fn remove_liquidity(
+    &mut self,
+    pool_id: u64,
+    lp_tokens: U256,
+    min_amount_a: U256,
+    min_amount_b: U256
+) -> (U256, U256)
+```
+
+Burn LP tokens and receive underlying tokens.
+
+### Swap
+
+```rust
+fn swap(
+    &mut self,
+    pool_id: u64,
+    token_in: Address,
+    amount_in: U256,
+    min_amount_out: U256
+) -> U256
+```
+
+Swap tokens. Returns amount received.
+
+## Deployment Example
+
+```
+Deploy a DEX with 0.3% swap fee
+```
+
+## Usage Examples
+
+### Create Pool
+
+```
+Create a liquidity pool for token hash-abc... and hash-def...
+```
+
+### Add Liquidity
+
+```
+Add 1000 token A and 500 token B to pool 0
+```
+
+### Get Swap Quote
+
+```
+How much token B would I get for 100 token A in pool 0?
+```
+
+### Execute Swap
+
+```
+Swap 100 token A for token B in pool 0
+```
+
+## Fee Structure
+
+| Fee (bps) | Percentage | Description |
+|-----------|------------|-------------|
+| 30 | 0.3% | Standard (like Uniswap v2) |
+| 10 | 0.1% | Low fee for stable pairs |
+| 100 | 1.0% | High fee for exotic pairs |
+
+## Slippage Protection
+
+<Callout type="warning">
+  Always use slippage protection to avoid front-running and price impact.
+</Callout>
+
+```javascript
+// Calculate minimum output with 1% slippage
+const expectedOut = getQuote(amountIn)
+const slippage = 0.01
+const minAmountOut = expectedOut * (1 - slippage)
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `PoolCreated` | New pool created |
+| `LiquidityAdded` | Liquidity added to pool |
+| `LiquidityRemoved` | Liquidity removed from pool |
+| `Swap` | Tokens swapped |
+
+## Impermanent Loss
+
+<Callout type="info">
+  Liquidity providers may experience impermanent loss when token prices diverge. This is an inherent risk of AMM-based DEXs.
+</Callout>
+
+## Testing
+
+```bash
+# Run DEX tests
+cargo odra test -c dex
+
+# Test with CasperVM
+cargo odra test -c dex -b casper
+```
+
+## Next Steps
+
+- [DEX Tools](/docs/mcp-tools/dex-tools) - MCP tool reference
+- [Token Contract](/docs/smart-contracts/token) - For pool tokens

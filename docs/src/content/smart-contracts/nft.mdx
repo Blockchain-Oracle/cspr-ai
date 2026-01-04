@@ -1,0 +1,170 @@
+---
+title: NFT Collection Contract
+description: Non-fungible token collection with metadata and minting modes
+---
+
+import { Callout } from 'nextra/components'
+
+# NFT Collection Contract
+
+A non-fungible token collection implementation with flexible minting modes.
+
+## Features
+
+- Unique token IDs with metadata
+- Multiple minting modes (public, restricted, owner-only)
+- URI support (IPFS, HTTP, etc.)
+- Transfer and burn capabilities
+- Full event emission
+
+## Contract Structure
+
+```rust
+#[odra::module]
+pub struct NftCollection {
+    name: Var<String>,
+    symbol: Var<String>,
+    base_uri: Var<String>,
+    total_supply: Var<u64>,
+    max_supply: Var<Option<u64>>,
+    owners: Mapping<u64, Address>,
+    balances: Mapping<Address, u64>,
+    token_uris: Mapping<u64, String>,
+    ownable: SubModule<Ownable>,
+}
+```
+
+## Entry Points
+
+### Mint
+
+```rust
+fn mint(&mut self, to: Address, token_name: String, token_uri: Option<String>) -> u64
+```
+
+Mint a new NFT. Returns the new token ID.
+
+### Transfer
+
+```rust
+fn transfer(&mut self, from: Address, to: Address, token_id: u64)
+```
+
+Transfer an NFT to another address.
+
+### Burn
+
+```rust
+fn burn(&mut self, token_id: u64)
+```
+
+Permanently destroy an NFT.
+
+### Set Token URI
+
+```rust
+fn set_token_uri(&mut self, token_id: u64, uri: String)
+```
+
+Update the URI for a token (owner only).
+
+## Minting Modes
+
+| Mode | Description |
+|------|-------------|
+| `Public` | Anyone can mint (for community collections) |
+| `Restricted` | Only addresses with minter role |
+| `OwnerOnly` | Only contract owner can mint |
+
+## Deployment Example
+
+```
+Deploy an NFT collection called "Cool Cats" with symbol "COOL",
+base URI "ipfs://Qm...", max supply 10000, and public minting
+```
+
+## Query Examples
+
+### Get Collection Info
+
+```
+What's the info for NFT collection hash-abc...?
+```
+
+Response:
+```json
+{
+  "name": "Cool Cats",
+  "symbol": "COOL",
+  "base_uri": "ipfs://Qm...",
+  "max_supply": 10000,
+  "total_supply": 150,
+  "minting_mode": "public"
+}
+```
+
+### Check Ownership
+
+```
+Who owns token #42 in collection hash-abc...?
+```
+
+### Get Token Metadata
+
+```
+Get metadata for token #42
+```
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `Mint` | New NFT minted |
+| `Transfer` | NFT transferred |
+| `Burn` | NFT destroyed |
+| `MetadataUpdate` | Token URI changed |
+
+## URI Patterns
+
+The contract supports flexible URI patterns:
+
+| Pattern | Example |
+|---------|---------|
+| IPFS | `ipfs://QmXxx.../` |
+| HTTP | `https://api.example.com/metadata/` |
+| Data URI | `data:application/json;base64,...` |
+
+<Callout type="info">
+  If `token_uri` is not provided during minting, the URI will be auto-generated as `base_uri + token_id`.
+</Callout>
+
+## Metadata Standard
+
+Token metadata should follow this structure:
+
+```json
+{
+  "name": "Cool Cat #42",
+  "description": "A very cool cat",
+  "image": "ipfs://Qm.../42.png",
+  "attributes": [
+    { "trait_type": "Background", "value": "Blue" },
+    { "trait_type": "Eyes", "value": "Laser" }
+  ]
+}
+```
+
+## Testing
+
+```bash
+# Run NFT tests
+cargo odra test -c nft
+
+# Test with CasperVM
+cargo odra test -c nft -b casper
+```
+
+## Next Steps
+
+- [DAO Contract](/docs/smart-contracts/dao) - Governance
+- [NFT Tools](/docs/mcp-tools/nft-tools) - MCP tool reference

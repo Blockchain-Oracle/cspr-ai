@@ -1,0 +1,169 @@
+---
+title: Wallet Integration
+description: Integrating CSPR.click wallet with the web dashboard
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Wallet Integration
+
+The web dashboard uses [CSPR.click](https://cspr.click) for secure wallet connectivity.
+
+## Why CSPR.click?
+
+- **Non-custodial** - Users control their keys
+- **Multi-wallet Support** - Casper Wallet, Ledger, etc.
+- **Secure Signing** - Transactions signed in wallet
+- **Easy Integration** - Simple React SDK
+
+## Setup
+
+<Steps>
+### Install SDK
+
+```bash
+pnpm add @cspr-click/core @cspr-click/react
+```
+
+### Configure Provider
+
+```tsx filename="App.tsx"
+import { CsprClickProvider } from '@cspr-click/react'
+
+const csprClickOptions = {
+  appName: 'CSPR.AI',
+  appId: 'cspr-ai',
+  contentMode: 'iframe',
+  network: 'testnet' // or 'mainnet'
+}
+
+function App() {
+  return (
+    <CsprClickProvider options={csprClickOptions}>
+      <YourApp />
+    </CsprClickProvider>
+  )
+}
+```
+
+### Use Wallet Hook
+
+```tsx filename="WalletButton.tsx"
+import { useWallet } from '@cspr-click/react'
+
+function WalletButton() {
+  const { connect, disconnect, activeAccount, isConnected } = useWallet()
+
+  if (isConnected) {
+    return (
+      <div>
+        <p>Connected: {activeAccount?.public_key}</p>
+        <button onClick={disconnect}>Disconnect</button>
+      </div>
+    )
+  }
+
+  return <button onClick={connect}>Connect Wallet</button>
+}
+```
+</Steps>
+
+## Signing Transactions
+
+When the MCP server returns an unsigned transaction, use CSPR.click to sign:
+
+```tsx
+import { useWallet } from '@cspr-click/react'
+
+function TransactionSigner({ unsignedDeploy }) {
+  const { sign, activeAccount } = useWallet()
+
+  const handleSign = async () => {
+    try {
+      const signedDeploy = await sign({
+        deploy: unsignedDeploy,
+        signingPublicKeyHex: activeAccount.public_key
+      })
+
+      // Submit signed deploy to network
+      await submitToNetwork(signedDeploy)
+    } catch (error) {
+      console.error('Signing failed:', error)
+    }
+  }
+
+  return <button onClick={handleSign}>Sign & Submit</button>
+}
+```
+
+## Account Information
+
+Access connected account details:
+
+```tsx
+const { activeAccount } = useWallet()
+
+// Available properties
+activeAccount.public_key  // "01abc..."
+activeAccount.name        // "My Account"
+activeAccount.algorithm   // "ed25519" or "secp256k1"
+```
+
+## Network Switching
+
+<Callout type="warning">
+  Ensure your app and wallet are on the same network (testnet/mainnet).
+</Callout>
+
+```tsx
+const csprClickOptions = {
+  // ...
+  network: process.env.VITE_CASPER_NETWORK || 'testnet'
+}
+```
+
+## Error Handling
+
+Common wallet errors and handling:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `User rejected` | User cancelled signing | Show retry option |
+| `Account not found` | Wallet not connected | Prompt connection |
+| `Network mismatch` | Wrong network | Show network switch |
+
+```tsx
+try {
+  await sign(deploy)
+} catch (error) {
+  if (error.message.includes('rejected')) {
+    showMessage('Transaction cancelled by user')
+  } else if (error.message.includes('network')) {
+    showMessage('Please switch to the correct network')
+  }
+}
+```
+
+## Multiple Wallets
+
+CSPR.click supports multiple wallet providers:
+
+- Casper Wallet (browser extension)
+- Casper Signer (legacy)
+- Ledger (hardware wallet)
+- Torus (social login)
+
+Users can choose their preferred wallet when connecting.
+
+## Best Practices
+
+1. **Check Connection** - Always verify wallet is connected before operations
+2. **Show Addresses** - Display truncated addresses for confirmation
+3. **Confirm Transactions** - Show transaction details before signing
+4. **Handle Errors** - Provide clear error messages
+5. **Network Awareness** - Display current network prominently
+
+## Next Steps
+
+- [Features](/docs/web-dashboard/features) - Dashboard capabilities
+- [Transaction Tools](/docs/mcp-tools/transaction-tools) - Building transactions

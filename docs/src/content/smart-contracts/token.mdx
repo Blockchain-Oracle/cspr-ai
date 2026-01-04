@@ -1,0 +1,164 @@
+---
+title: CEP-18 Token Contract
+description: Fungible token implementation following the CEP-18 standard
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# CEP-18 Token Contract
+
+A fungible token implementation following the [CEP-18 standard](https://github.com/casper-ecosystem/cep18).
+
+## Features
+
+- Standard transfer and approval functions
+- Optional minting (with minter role)
+- Optional burning (configurable)
+- Full event emission
+- Metadata (name, symbol, decimals)
+
+## Contract Structure
+
+```rust
+#[odra::module]
+pub struct Token {
+    cep18: SubModule<Cep18>,
+    ownable: SubModule<Ownable>,
+}
+```
+
+## Entry Points
+
+### Transfer
+
+```rust
+fn transfer(&mut self, recipient: Address, amount: U256)
+```
+
+Transfer tokens to another address.
+
+### Transfer From
+
+```rust
+fn transfer_from(&mut self, owner: Address, recipient: Address, amount: U256)
+```
+
+Transfer tokens on behalf of another address (requires approval).
+
+### Approve
+
+```rust
+fn approve(&mut self, spender: Address, amount: U256)
+```
+
+Approve a spender to use tokens.
+
+### Mint
+
+```rust
+fn mint(&mut self, to: Address, amount: U256)
+```
+
+Mint new tokens (requires minter role).
+
+### Burn
+
+```rust
+fn burn(&mut self, amount: U256)
+```
+
+Burn tokens from caller's balance.
+
+## Deployment
+
+<Steps>
+### Build the Contract
+
+```bash
+cd contracts
+cargo odra build -c cep18
+```
+
+### Deploy via AI
+
+```
+Deploy a new token called "My Token" with symbol "MTK",
+18 decimals, and initial supply of 1,000,000
+```
+
+### Save Contract Address
+
+The deployment will return a contract hash. Save it for future use:
+
+```bash
+# Add to .env
+CASPER_TOKEN_CONTRACT_ADDRESS=hash-abc123...
+```
+</Steps>
+
+## Usage Examples
+
+### Query Token Info
+
+```
+What's the total supply of token hash-abc123...?
+```
+
+### Transfer Tokens
+
+```
+Transfer 100 tokens to 01def456...
+```
+
+### Check Balance
+
+```
+What's my token balance?
+```
+
+## Events
+
+The contract emits the following events:
+
+| Event | Description |
+|-------|-------------|
+| `Transfer` | Tokens transferred |
+| `Approval` | Spending approved |
+| `Mint` | New tokens minted |
+| `Burn` | Tokens burned |
+
+## Configuration Options
+
+| Option | Description | Default |
+|--------|-------------|---------|
+| `enable_mint_burn` | Allow minting/burning | `true` |
+| `minter` | Address with mint permission | Owner |
+| `decimals` | Token decimal places | `18` |
+
+<Callout type="warning">
+  Once deployed, some configuration options cannot be changed. Plan carefully before deployment.
+</Callout>
+
+## Testing
+
+```bash
+# Run token tests
+cargo odra test -c cep18
+
+# Test with CasperVM for accuracy
+cargo odra test -c cep18 -b casper
+```
+
+## Security
+
+The token contract includes:
+
+- Overflow protection (using Rust's checked math)
+- Access control for minting
+- Balance verification for transfers
+- Event emission for all state changes
+
+## Next Steps
+
+- [NFT Collection](/docs/smart-contracts/nft) - Non-fungible tokens
+- [Token Tools](/docs/mcp-tools/token-tools) - MCP tool reference

@@ -1,0 +1,253 @@
+---
+title: Configuration
+description: Complete configuration options for CSPR.AI MCP Server
+---
+
+import { Callout, Tabs } from 'nextra/components'
+
+# Configuration
+
+CSPR.AI is configured through environment variables. This page documents all available options for both local development and integration with AI assistants.
+
+## Live Deployment
+
+<Callout type="info">
+  CSPR.AI is live! You can use the hosted deployment without running anything locally.
+</Callout>
+
+| Service | URL |
+|---------|-----|
+| **Web Dashboard** | [cspr-ai.xyz](https://cspr-ai.xyz) |
+| **MCP API** | [mcp.cspr-ai.xyz/mcp](https://mcp.cspr-ai.xyz/mcp) |
+| **Health Check** | [mcp.cspr-ai.xyz/health](https://mcp.cspr-ai.xyz/health) |
+
+## Environment Variables
+
+### Network Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `CASPER_NETWORK` | Network to connect to (`mainnet` or `testnet`) | `testnet` | No |
+| `CASPER_RPC_URL` | Casper RPC endpoint URL | Network default | No |
+| `CSPR_CLOUD_API_KEY` | API key for CSPR.cloud data APIs | None | Recommended |
+
+Get your CSPR.cloud API key at [cspr.cloud](https://cspr.cloud).
+
+### Transport Configuration
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `MCP_TRANSPORT` | Transport mode (`stdio` or `http`) | `stdio` | No |
+| `MCP_HTTP_PORT` | HTTP server port (when using HTTP transport) | `3001` | No |
+| `CORS_ORIGIN` | Allowed CORS origins (comma-separated for multiple) | `http://localhost:3000` | No |
+
+### Wallet Configuration (stdio mode only)
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `CASPER_SECRET_KEY` | Private key for signing (PEM or hex format) | None | No |
+
+<Callout type="error">
+  **Security Warning**: Only use `CASPER_SECRET_KEY` in stdio mode for CLI tools. Never use in HTTP mode or expose to web frontends. Web users should sign transactions via CSPR.click wallet.
+</Callout>
+
+### Smart Contract Addresses
+
+Pre-deployed CSPR.AI contracts on testnet:
+
+| Variable | Contract | Package Hash |
+|----------|----------|--------------|
+| `CASPER_TOKEN_CONTRACT_ADDRESS` | CEP-18 Token | `contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05` |
+| `CASPER_NFT_CONTRACT_ADDRESS` | NFT Collection | `contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b` |
+| `CASPER_DAO_CONTRACT_ADDRESS` | Governance DAO | `contract-package-91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f` |
+| `CASPER_DEX_CONTRACT_ADDRESS` | AMM DEX | `contract-package-7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1` |
+
+View on explorer:
+- [Token Contract](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05)
+- [NFT Contract](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b)
+- [DAO Contract](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f)
+- [DEX Contract](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1)
+
+## MCP Integration
+
+### Option 1: Use Live Deployment (Recommended)
+
+Configure your MCP client to use the hosted deployment:
+
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "https://mcp.cspr-ai.xyz/mcp"
+    }
+  }
+}
+```
+
+### Option 2: Run Locally
+
+Start the MCP server in HTTP mode:
+
+```bash
+cd mcp-server
+MCP_TRANSPORT=http pnpm dev
+```
+
+Configure your MCP client:
+
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "http://localhost:3001/mcp"
+    }
+  }
+}
+```
+
+## Claude Desktop Configuration
+
+Add CSPR.AI to your Claude Desktop config:
+
+<Tabs items={['macOS', 'Windows', 'Linux']}>
+  <Tabs.Tab>
+```json filename="~/Library/Application Support/Claude/claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["/absolute/path/to/cspr-ai/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```json filename="%APPDATA%\Claude\claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["C:\\path\\to\\cspr-ai\\mcp-server\\dist\\index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+  </Tabs.Tab>
+  <Tabs.Tab>
+```json filename="~/.config/Claude/claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["/absolute/path/to/cspr-ai/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+  </Tabs.Tab>
+</Tabs>
+
+**Important**: Use absolute paths to the built server (`dist/index.js`). Build the server first with `pnpm build`.
+
+## Cursor IDE Configuration
+
+Add to your Cursor settings:
+
+```json filename=".cursor/config.json"
+{
+  "mcp.servers": {
+    "casper": {
+      "command": "node",
+      "args": ["/absolute/path/to/cspr-ai/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+## Claude Code Configuration
+
+Edit `~/.claude/config.json`:
+
+```json
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["/absolute/path/to/cspr-ai/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+## Example .env Files
+
+### Development (Testnet with HTTP)
+
+```bash filename=".env"
+# Network
+CASPER_NETWORK=testnet
+CSPR_CLOUD_API_KEY=your-api-key-here
+
+# Transport
+MCP_TRANSPORT=http
+MCP_HTTP_PORT=3001
+CORS_ORIGIN=http://localhost:3000
+```
+
+### Production (stdio mode)
+
+```bash filename=".env"
+# Network
+CASPER_NETWORK=testnet
+CSPR_CLOUD_API_KEY=your-api-key-here
+
+# Wallet (for CLI signing)
+CASPER_SECRET_KEY=your-private-key-here
+
+# Contracts
+CASPER_TOKEN_CONTRACT_ADDRESS=contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05
+CASPER_NFT_CONTRACT_ADDRESS=contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b
+```
+
+## Network Endpoints
+
+### Testnet
+
+| Service | URL |
+|---------|-----|
+| RPC | `https://node.testnet.cspr.cloud/rpc` |
+| Explorer | [testnet.cspr.live](https://testnet.cspr.live) |
+| Faucet | [testnet.cspr.live/tools/faucet](https://testnet.cspr.live/tools/faucet) |
+
+### Mainnet
+
+| Service | URL |
+|---------|-----|
+| RPC | `https://node.cspr.cloud/rpc` |
+| Explorer | [cspr.live](https://cspr.live) |
+
+## Next Steps
+
+- [Your First Query](/getting-started/first-query) - Try your first query
+- [MCP Tools](/mcp-tools) - Explore available tools

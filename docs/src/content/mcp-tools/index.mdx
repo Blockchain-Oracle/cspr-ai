@@ -1,0 +1,143 @@
+---
+title: MCP Tools Overview
+description: Complete guide to CSPR.AI's MCP tools for Casper Network
+---
+
+import { Callout } from 'nextra/components'
+import { DocCards, DocCard } from '@/components/doc-cards'
+
+# MCP Tools
+
+CSPR.AI provides 50+ tools for interacting with the Casper Network through the Model Context Protocol (MCP).
+
+## Tool Categories
+
+<DocCards cols={2}>
+  <DocCard
+    title="Account Tools"
+    description="Query balances, transaction history, and account information"
+    href="/mcp-tools/account-tools"
+  />
+  <DocCard
+    title="Validator Tools"
+    description="List validators, check rewards, and delegation info"
+    href="/mcp-tools/validator-tools"
+  />
+  <DocCard
+    title="Transaction Tools"
+    description="Build transfers, delegations, and check deploy status"
+    href="/mcp-tools/transaction-tools"
+  />
+  <DocCard
+    title="Token Tools"
+    description="CEP-18 token operations: transfer, mint, burn"
+    href="/mcp-tools/token-tools"
+  />
+  <DocCard
+    title="NFT Tools"
+    description="NFT collection management: mint, transfer, query"
+    href="/mcp-tools/nft-tools"
+  />
+  <DocCard
+    title="DAO Tools"
+    description="Governance: proposals, voting, execution"
+    href="/mcp-tools/dao-tools"
+  />
+  <DocCard
+    title="DEX Tools"
+    description="AMM operations: pools, liquidity, swaps"
+    href="/mcp-tools/dex-tools"
+  />
+</DocCards>
+
+## Tool Types
+
+### Read-Only Tools
+
+Read-only tools query the blockchain without making changes:
+
+- `casper_get_balance` - Query account balance
+- `casper_get_validators` - List validators
+- `casper_get_deploy_status` - Check transaction status
+
+<Callout>
+  Read-only tools are free to use and don't require a wallet.
+</Callout>
+
+### Transaction Builders
+
+Transaction builders create unsigned transactions that must be signed:
+
+- `casper_build_transfer` - Build CSPR transfer
+- `casper_build_delegation` - Build stake delegation
+- `casper_build_token_transfer` - Build token transfer
+
+<Callout type="warning">
+  Transaction builders return unsigned transactions. You must sign them with your wallet before submitting.
+</Callout>
+
+### Signing Tools
+
+If configured with a secret key, the server can sign and submit:
+
+- `casper_sign_and_submit_transaction` - Sign and submit to network
+- `casper_wallet_status` - Check wallet configuration
+
+## Quick Reference
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `casper_get_balance` | Read | Query CSPR balance |
+| `casper_get_validators` | Read | List active validators |
+| `casper_get_staking_info` | Read | Query delegations |
+| `casper_get_deploy_status` | Read | Check transaction status |
+| `casper_build_transfer` | Build | Create CSPR transfer |
+| `casper_build_delegation` | Build | Create delegation |
+| `casper_query_token` | Read | Query token info |
+| `casper_build_token_transfer` | Build | Create token transfer |
+| `casper_query_nft` | Read | Query NFT info |
+| `casper_build_nft_mint` | Build | Create NFT mint |
+| `casper_query_dao` | Read | Query DAO state |
+| `casper_build_dao_vote` | Build | Create vote transaction |
+| `casper_query_dex` | Read | Query pool info |
+| `casper_build_dex_swap` | Build | Create swap transaction |
+
+## Using Tools with Claude
+
+When chatting with Claude, simply describe what you want to do:
+
+```
+What's the balance of account 01abc...?
+```
+
+Claude will automatically select the appropriate tool and execute it.
+
+For complex operations, Claude will guide you through the steps:
+
+1. Query current state
+2. Build transaction
+3. Present for signing
+4. Track execution status
+
+## Error Handling
+
+All tools return structured error messages:
+
+```json
+{
+  "error": "Invalid public key format",
+  "details": "Public key must start with 01 (Ed25519) or 02 (Secp256k1)"
+}
+```
+
+## Next Steps
+
+Explore each tool category:
+
+- [Account Tools](/mcp-tools/account-tools) - Balance and history queries
+- [Validator Tools](/mcp-tools/validator-tools) - Validator data and staking
+- [Transaction Tools](/mcp-tools/transaction-tools) - Building transactions
+- [Token Tools](/mcp-tools/token-tools) - CEP-18 token operations
+- [NFT Tools](/mcp-tools/nft-tools) - NFT collection management
+- [DAO Tools](/mcp-tools/dao-tools) - Governance operations
+- [DEX Tools](/mcp-tools/dex-tools) - AMM and liquidity pools

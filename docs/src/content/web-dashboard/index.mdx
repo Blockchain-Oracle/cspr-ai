@@ -1,0 +1,127 @@
+---
+title: Web Dashboard Overview
+description: Next.js web interface for CSPR.AI with AI chat and wallet integration
+---
+
+import { Callout } from 'nextra/components'
+import { DocCards, DocCard } from '@/components/doc-cards'
+
+# Web Dashboard
+
+<Callout type="info">
+  **Live at [cspr-ai.xyz](https://cspr-ai.xyz)** - Try the dashboard without any setup!
+</Callout>
+
+A Next.js web interface for interacting with CSPR.AI and the Casper Network using natural language AI chat.
+
+## Features
+
+- **AI Chat Interface** - Natural language blockchain interaction with Claude or GPT
+- **CSPR.click Wallet** - Secure client-side transaction signing
+- **Conversation History** - Persistent chat threads with PostgreSQL
+- **Real-time Updates** - Live balance and transaction status
+- **Multi-Provider AI** - Supports Anthropic Claude and OpenAI models
+
+## Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| Framework | Next.js 16 (App Router) |
+| Runtime | React 19 |
+| AI SDK | Vercel AI SDK |
+| Database | PostgreSQL 16 |
+| ORM | Drizzle ORM |
+| Cache | Redis 7 |
+| Wallet | CSPR.click SDK |
+| Styling | Tailwind CSS 4 |
+| UI | shadcn/ui |
+
+## Quick Start
+
+### Option 1: Use Live Deployment
+
+Visit [cspr-ai.xyz](https://cspr-ai.xyz) to use the dashboard immediately.
+
+### Option 2: Run Locally
+
+```bash
+# Start infrastructure (PostgreSQL + Redis)
+cd web
+docker-compose up -d
+
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.example .env.local
+# Edit .env.local with your settings
+
+# Run development server
+pnpm dev
+```
+
+The dashboard will be available at `http://localhost:3000`.
+
+## Configuration
+
+Create a `.env.local` file:
+
+```bash filename=".env.local"
+# MCP Server URL (HTTP transport)
+NEXT_PUBLIC_MCP_SERVER_URL=http://localhost:3001
+
+# Database (PostgreSQL from docker-compose)
+DATABASE_URL=postgresql://csprai:csprai_dev_password@localhost:5433/csprai
+
+# AI Provider (choose one)
+ANTHROPIC_API_KEY=your-anthropic-key
+# or
+OPENAI_API_KEY=your-openai-key
+```
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                   Web Dashboard                      │
+├─────────────────────────────────────────────────────┤
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  │
+│  │  AI Chat    │  │  Tx Builder │  │  Portfolio  │  │
+│  └──────┬──────┘  └──────┬──────┘  └──────┬──────┘  │
+│         │                │                │         │
+│  ┌──────┴────────────────┴────────────────┴──────┐  │
+│  │              CSPR.click Wallet                 │  │
+│  └───────────────────────┬───────────────────────┘  │
+└──────────────────────────┼──────────────────────────┘
+                           │
+                           ▼
+            ┌──────────────────────────┐
+            │       MCP Server         │
+            │  (HTTP Transport)        │
+            └──────────────────────────┘
+```
+
+<Callout>
+  The web dashboard connects to the MCP server via HTTP transport. Make sure the MCP server is running with `MCP_TRANSPORT=http`.
+</Callout>
+
+## Security
+
+- **No Private Keys** - All signing happens in CSPR.click browser extension
+- **Client-side Signing** - Transactions are signed in user's browser
+- **Secure Communication** - HTTPS in production
+
+## Next Steps
+
+<DocCards cols={2}>
+  <DocCard
+    title="Wallet Integration"
+    description="Connect CSPR.click wallet"
+    href="/web-dashboard/wallet-integration"
+  />
+  <DocCard
+    title="Features"
+    description="Explore dashboard features"
+    href="/web-dashboard/features"
+  />
+</DocCards>

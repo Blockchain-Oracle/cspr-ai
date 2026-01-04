@@ -1,0 +1,146 @@
+---
+title: Getting Started
+description: Set up CSPR.AI and start interacting with Casper Network using AI
+---
+
+import { Steps, Callout } from 'nextra/components'
+import { DocCards, DocCard } from '@/components/doc-cards'
+
+# Getting Started
+
+This guide will help you set up CSPR.AI and make your first AI-powered blockchain query.
+
+<Callout type="info">
+  **Quick Start**: CSPR.AI is live at [cspr-ai.xyz](https://cspr-ai.xyz). You can use it immediately without local setup!
+</Callout>
+
+## Prerequisites
+
+Before you begin, ensure you have:
+
+- **Node.js 18+** - [Download](https://nodejs.org/)
+- **pnpm** - Package manager (`npm install -g pnpm`)
+- **Git** - Version control
+- A text editor (VS Code recommended)
+
+<Callout>
+  CSPR.AI works with both Casper Testnet and Mainnet. We recommend starting with Testnet for development.
+</Callout>
+
+## Option 1: Use Live Deployment (Recommended)
+
+No setup required! Configure your MCP client to use our hosted deployment:
+
+```json
+{
+  "mcpServers": {
+    "casper-mcp": {
+      "url": "https://mcp.cspr-ai.xyz/mcp"
+    }
+  }
+}
+```
+
+## Option 2: Run Locally
+
+<Steps>
+### Clone the Repository
+
+```bash
+git clone https://github.com/Blockchain-Oracle/cspr-ai.git
+cd cspr-ai
+```
+
+### Install Dependencies
+
+```bash
+# MCP Server
+cd mcp-server
+pnpm install
+
+# Web Dashboard (optional)
+cd ../web
+pnpm install
+```
+
+### Configure Environment
+
+Create a `.env` file in the `mcp-server` directory:
+
+```bash filename=".env"
+# Network Configuration
+CASPER_NETWORK=testnet
+CSPR_CLOUD_API_KEY=your-api-key-here
+
+# Transport (stdio for CLI, http for web)
+MCP_TRANSPORT=stdio
+```
+
+Get your CSPR.cloud API key at [cspr.cloud](https://cspr.cloud).
+
+### Start the MCP Server
+
+```bash
+cd mcp-server
+pnpm dev
+```
+
+The MCP server will start and be ready to accept connections from AI assistants.
+</Steps>
+
+## Connecting to Claude Desktop
+
+To use CSPR.AI with Claude Desktop, add it to your MCP configuration:
+
+```json filename="claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["/absolute/path/to/cspr-ai/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CSPR_CLOUD_API_KEY": "your-api-key-here"
+      }
+    }
+  }
+}
+```
+
+**Important**: Use absolute paths and ensure the server is built (`pnpm build`).
+
+## HTTP Transport (For Web Dashboard)
+
+For web applications, use HTTP transport:
+
+```bash
+# Start with HTTP transport
+MCP_TRANSPORT=http pnpm dev
+```
+
+The server will be available at `http://localhost:3001/mcp`.
+
+## What's Next?
+
+<DocCards cols={2}>
+  <DocCard
+    title="Installation"
+    description="Detailed installation options"
+    href="/getting-started/installation"
+  />
+  <DocCard
+    title="Configuration"
+    description="All configuration options"
+    href="/getting-started/configuration"
+  />
+  <DocCard
+    title="Your First Query"
+    description="Make your first blockchain query"
+    href="/getting-started/first-query"
+  />
+  <DocCard
+    title="MCP Tools"
+    description="Explore 50+ available tools"
+    href="/mcp-tools"
+  />
+</DocCards>

@@ -1,0 +1,156 @@
+---
+title: API Reference Overview
+description: Complete API documentation for CSPR.AI MCP Server
+---
+
+import { Callout } from 'nextra/components'
+import { DocCards, DocCard } from '@/components/doc-cards'
+
+# API Reference
+
+Complete API documentation for the CSPR.AI MCP Server.
+
+## Transport Options
+
+The MCP server supports two transport mechanisms:
+
+<DocCards cols={2}>
+  <DocCard
+    title="HTTP Transport"
+    description="REST-like API for web applications"
+    href="/api-reference/http-transport"
+  />
+  <DocCard
+    title="Stdio Transport"
+    description="Standard I/O for Claude Desktop and CLI tools"
+    href="/api-reference/stdio-transport"
+  />
+</DocCards>
+
+## Protocol
+
+CSPR.AI implements the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) specification.
+
+### Request Format
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "tool_name",
+    "arguments": {
+      "param1": "value1"
+    }
+  }
+}
+```
+
+### Response Format
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": {
+    "content": [
+      {
+        "type": "text",
+        "text": "Result content"
+      }
+    ]
+  }
+}
+```
+
+## Available Methods
+
+### Tools
+
+| Method | Description |
+|--------|-------------|
+| `tools/list` | List available tools |
+| `tools/call` | Execute a tool |
+
+### Resources
+
+| Method | Description |
+|--------|-------------|
+| `resources/list` | List available resources |
+| `resources/read` | Read a resource |
+
+## Tool Categories
+
+| Category | Tools | Description |
+|----------|-------|-------------|
+| Account | 4 | Balance, history, staking |
+| Validator | 4 | List, rewards, blocks |
+| Transaction | 6 | Build, sign, status |
+| Token | 4 | CEP-18 operations |
+| NFT | 4 | Collection operations |
+| DAO | 4 | Governance |
+| DEX | 5 | AMM operations |
+
+## Authentication
+
+<Callout>
+  The MCP server does not require authentication by default. For production deployments, implement authentication at the infrastructure level.
+</Callout>
+
+## Rate Limiting
+
+Default rate limits:
+
+| Endpoint | Limit |
+|----------|-------|
+| Read operations | 100 req/min |
+| Write operations | 20 req/min |
+
+## Error Handling
+
+All errors follow the MCP error format:
+
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32000,
+    "message": "Error description",
+    "data": {
+      "details": "Additional information"
+    }
+  }
+}
+```
+
+See [Error Codes](/api-reference/error-codes) for complete list.
+
+## SDKs and Libraries
+
+### Official
+
+- **TypeScript** - `@cspr-ai/mcp-client` (coming soon)
+
+### Community
+
+Contributions welcome for:
+- Python SDK
+- Rust SDK
+- Go SDK
+
+## Next Steps
+
+<DocCards cols={2}>
+  <DocCard
+    title="HTTP Transport"
+    description="Web application integration"
+    href="/api-reference/http-transport"
+  />
+  <DocCard
+    title="Error Codes"
+    description="Error handling reference"
+    href="/api-reference/error-codes"
+  />
+</DocCards>

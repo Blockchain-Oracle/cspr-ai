@@ -1,0 +1,194 @@
+---
+title: DAO Tools
+description: Governance operations - proposals, voting, and execution
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# DAO Tools
+
+Tools for decentralized governance on Casper Network.
+
+<Callout type="info">
+  DAO tools require `CASPER_DAO_CONTRACT_ADDRESS` for operations.
+</Callout>
+
+## casper_query_dao
+
+Query DAO contract state.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contract_address` | string | Yes | DAO contract (`hash-...`) |
+| `query_type` | string | Yes | See query types below |
+| `proposal_id` | string | No | Required for proposal/vote queries |
+| `voter` | string | No | Required for vote queries |
+| `account` | string | No | Required for balance/power queries |
+
+### Query Types
+
+#### proposal
+
+Get proposal details:
+
+```json
+{
+  "proposal_id": "1",
+  "description": "Fund community project",
+  "proposer": "01abc...",
+  "status": "active",
+  "votes_for": "1000000",
+  "votes_against": "500000",
+  "start_time": "2024-01-01T00:00:00Z",
+  "end_time": "2024-01-08T00:00:00Z"
+}
+```
+
+#### vote
+
+Get a specific vote:
+
+```json
+{
+  "voter": "01abc...",
+  "support": true,
+  "voting_power": "10000"
+}
+```
+
+#### config
+
+Get DAO configuration:
+
+```json
+{
+  "voting_period_ms": 604800000,
+  "proposal_threshold": "1000",
+  "quorum": "10000"
+}
+```
+
+#### token_balance
+
+Get governance token balance for an account.
+
+#### voting_power
+
+Get current voting power for an account.
+
+---
+
+## casper_build_dao_propose
+
+Build a proposal creation transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Proposer's public key |
+| `description` | string | Yes | Proposal description (1-500 chars) |
+| `action_type` | string | Yes | Type of action |
+| `action_params` | object | Yes | Action-specific parameters |
+
+### Action Types
+
+| Type | Parameters | Description |
+|------|------------|-------------|
+| `mint_tokens` | `recipient`, `amount` | Mint governance tokens |
+| `treasury_transfer` | `recipient`, `amount` | Transfer from treasury |
+| `update_voting_period` | `new_period` | Change voting period |
+| `custom` | `custom_description` | Custom action |
+
+### Example
+
+```
+Query: Create a proposal to mint 1000 tokens to 01abc...
+```
+
+<Callout type="warning">
+  Proposer must hold at least `proposal_threshold` tokens to create a proposal.
+</Callout>
+
+---
+
+## casper_build_dao_vote
+
+Build a vote transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Voter's public key |
+| `proposal_id` | string | Yes | Proposal ID to vote on |
+| `support` | boolean | Yes | `true` for yes, `false` for no |
+| `amount` | string | Yes | Voting power to allocate |
+
+### Example
+
+```
+Query: Vote yes on proposal 1 with 100 tokens
+```
+
+<Callout>
+  Voting power is snapshot-based. More tokens = more voting power.
+</Callout>
+
+---
+
+## casper_build_dao_execute
+
+Build a proposal execution transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Executor's public key |
+| `proposal_id` | string | Yes | Proposal ID to execute |
+
+### Execution Requirements
+
+- Voting period must have ended
+- Proposal must have reached quorum
+- Proposal must have majority support
+- Status must be "approved"
+
+## Proposal Lifecycle
+
+<Steps>
+### Create Proposal
+
+Proposer creates a new proposal with description and action.
+
+### Voting Period
+
+Token holders vote during the voting period.
+
+### Quorum Check
+
+Proposal must reach minimum participation.
+
+### Execution
+
+If approved, anyone can execute the proposal.
+</Steps>
+
+## Proposal Statuses
+
+| Status | Description |
+|--------|-------------|
+| `pending` | Waiting for voting period to start |
+| `active` | Voting is open |
+| `defeated` | Did not pass (quorum or majority) |
+| `approved` | Passed, waiting for execution |
+| `executed` | Successfully executed |
+| `expired` | Approved but not executed in time |
+
+## Next Steps
+
+- [DEX Tools](/docs/mcp-tools/dex-tools) - Decentralized exchange
+- [Smart Contracts](/docs/smart-contracts/dao) - Deploy your own DAO

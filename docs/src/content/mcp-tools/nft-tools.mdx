@@ -1,0 +1,163 @@
+---
+title: NFT Tools
+description: NFT collection operations - query, mint, transfer, and burn
+---
+
+import { Callout } from 'nextra/components'
+
+# NFT Tools
+
+Tools for interacting with NFT collections on Casper Network.
+
+<Callout type="info">
+  NFT tools require `CASPER_NFT_CONTRACT_ADDRESS` for write operations.
+</Callout>
+
+## casper_query_nft
+
+Query NFT contract state (read-only).
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contract_address` | string | Yes | NFT contract (`hash-...`) |
+| `query_type` | string | Yes | See query types below |
+| `token_id` | string | No | Required for token-specific queries |
+| `owner` | string | No | Required for balance queries |
+
+### Query Types
+
+#### collection_info
+
+Get collection metadata:
+
+```json
+{
+  "name": "My NFT Collection",
+  "symbol": "MNFT",
+  "base_uri": "ipfs://...",
+  "max_supply": 10000,
+  "total_supply": 150,
+  "minting_mode": "public"
+}
+```
+
+#### owner
+
+Get the owner of a specific token:
+
+```
+Query: Who owns token #123 in collection hash-abc...?
+```
+
+#### metadata
+
+Get full token metadata:
+
+```json
+{
+  "token_id": "123",
+  "name": "Cool NFT #123",
+  "uri": "ipfs://...",
+  "owner": "01abc..."
+}
+```
+
+#### balance
+
+Get how many NFTs an address owns:
+
+```
+Query: How many NFTs does 01abc... own?
+```
+
+#### token_uri
+
+Get the URI for a specific token.
+
+#### approved
+
+Get the approved address for a token.
+
+---
+
+## casper_build_nft_mint
+
+Build an NFT mint transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Minter's public key |
+| `to` | string | Yes | Recipient's address |
+| `token_name` | string | Yes | Individual NFT name |
+| `token_uri` | string | No | Custom URI (auto-generated if not provided) |
+
+### Example
+
+```
+Query: Mint a new NFT called "Cool NFT #1" to 01abc...
+```
+
+<Callout>
+  If `token_uri` is not provided, the URI will be auto-generated as `base_uri + token_id`.
+</Callout>
+
+---
+
+## casper_build_nft_transfer
+
+Build an NFT transfer transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Current owner's public key |
+| `from` | string | Yes | Current owner's address |
+| `to` | string | Yes | Recipient's address |
+| `token_id` | string | Yes | Token ID to transfer |
+
+### Example
+
+```
+Query: Transfer NFT #123 to 01def...
+```
+
+<Callout type="warning">
+  Only the current owner can transfer an NFT.
+</Callout>
+
+---
+
+## casper_build_nft_burn
+
+Build an NFT burn transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Owner's public key |
+| `token_id` | string | Yes | Token ID to burn |
+
+<Callout type="error">
+  Burning is permanent and cannot be undone. The caller must be the current owner.
+</Callout>
+
+## Minting Modes
+
+NFT collections can have different minting modes:
+
+| Mode | Description |
+|------|-------------|
+| `public` | Anyone can mint |
+| `restricted` | Only addresses with minter role can mint |
+| `owner_only` | Only the contract owner can mint |
+
+## Next Steps
+
+- [DAO Tools](/docs/mcp-tools/dao-tools) - Governance operations
+- [Smart Contracts](/docs/smart-contracts/nft) - Deploy your own NFT collection

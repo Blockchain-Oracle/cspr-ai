@@ -1,0 +1,142 @@
+---
+title: Your First Query
+description: Make your first AI-powered blockchain query with CSPR.AI
+---
+
+import { Callout, Steps } from 'nextra/components'
+
+# Your First Query
+
+Let's make your first AI-powered query to the Casper Network.
+
+## Using Claude Desktop
+
+<Steps>
+### Start the MCP Server
+
+Make sure your MCP server is running:
+
+```bash
+cd mcp-server
+pnpm dev
+```
+
+### Open Claude Desktop
+
+Open Claude Desktop and verify CSPR.AI is connected. You should see the Casper tools available.
+
+### Ask About a Balance
+
+Try asking Claude:
+
+```
+What's the balance of this Casper account?
+01a123456789abcdef01a123456789abcdef01a123456789abcdef01a123456789ab
+```
+
+Claude will use the `casper_get_balance` tool to query the blockchain and return the result.
+</Steps>
+
+## Example Queries
+
+Here are some queries you can try:
+
+### Account Queries
+
+```
+Show me the top validators on Casper Network
+```
+
+```
+What delegations does this account have?
+01abc...
+```
+
+### Transaction Queries
+
+```
+Check the status of this deploy:
+abc123def456...
+```
+
+### Building Transactions
+
+```
+Build a transaction to transfer 100 CSPR from 01abc... to 01def...
+```
+
+<Callout type="info">
+  Transaction building returns an unsigned transaction. You'll need to sign it with your wallet before submitting.
+</Callout>
+
+## Using the HTTP API
+
+If you're using the HTTP transport, you can make requests directly:
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "method": "tools/call",
+    "params": {
+      "name": "casper_get_balance",
+      "arguments": {
+        "public_key": "01abc..."
+      }
+    }
+  }'
+```
+
+## Understanding Responses
+
+### Balance Query Response
+
+```json
+{
+  "public_key": "01abc...",
+  "balance_cspr": "1000.50",
+  "balance_motes": "1000500000000",
+  "network": "testnet"
+}
+```
+
+### Transaction Response
+
+```json
+{
+  "type": "transfer",
+  "from": "01abc...",
+  "to": "01def...",
+  "amount_cspr": 100,
+  "unsigned_deploy": { ... },
+  "requires_signature": true
+}
+```
+
+## Common Patterns
+
+### Query Then Act
+
+1. Query balance to check funds
+2. Query validators to choose one
+3. Build delegation transaction
+4. Sign with wallet
+5. Submit to network
+
+### Error Handling
+
+If something goes wrong, Claude will explain the error:
+
+```
+Error: Account not found
+The public key 01abc... doesn't exist on the network.
+Please verify the address and try again.
+```
+
+## Next Steps
+
+Now that you've made your first query, explore:
+
+- [MCP Tools](/docs/mcp-tools) - Full list of available tools
+- [Smart Contracts](/docs/smart-contracts) - Deploy your own contracts
+- [Web Dashboard](/docs/web-dashboard) - Use the visual interface

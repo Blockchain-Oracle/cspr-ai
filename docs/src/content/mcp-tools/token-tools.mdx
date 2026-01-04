@@ -1,0 +1,147 @@
+---
+title: Token Tools
+description: CEP-18 token operations - query, transfer, mint, and burn
+---
+
+import { Callout } from 'nextra/components'
+
+# Token Tools
+
+Tools for interacting with CEP-18 fungible tokens on Casper Network.
+
+<Callout type="info">
+  Token tools require `CASPER_TOKEN_CONTRACT_ADDRESS` to be configured for write operations.
+</Callout>
+
+## casper_query_token
+
+Query token contract state (read-only).
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contract_address` | string | Yes | Token contract (`hash-...`) |
+| `query_type` | string | Yes | `metadata`, `balance`, `supply`, or `allowance` |
+| `owner` | string | No | Required for balance/allowance queries |
+| `spender` | string | No | Required for allowance queries |
+
+### Query Types
+
+#### Metadata
+
+```
+Query: Get the metadata for token hash-abc123...
+```
+
+Response:
+
+```json
+{
+  "name": "My Token",
+  "symbol": "MTK",
+  "decimals": 8,
+  "total_supply": "1000000000000000"
+}
+```
+
+#### Balance
+
+```
+Query: What's my balance of token hash-abc123...?
+```
+
+#### Supply
+
+```
+Query: What's the total supply of token hash-abc123...?
+```
+
+#### Allowance
+
+```
+Query: How much has 01abc... approved 01def... to spend?
+```
+
+---
+
+## casper_build_token_transfer
+
+Build a token transfer transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Sender's public key |
+| `recipient` | string | Yes | Recipient's public key |
+| `amount` | string | Yes | Amount (in smallest unit) |
+
+### Example
+
+```
+Query: Transfer 1000 tokens to 01def...
+```
+
+<Callout type="warning">
+  Amount must be in the smallest unit. For a token with 8 decimals, to transfer 10 tokens, use `amount="1000000000"`.
+</Callout>
+
+---
+
+## casper_build_token_mint
+
+Build a token mint transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Minter's public key (must have minter role) |
+| `recipient` | string | Yes | Recipient's address |
+| `amount` | string | Yes | Amount to mint |
+
+<Callout type="error">
+  Minting requires the minter role on the contract. Not all tokens support minting.
+</Callout>
+
+---
+
+## casper_build_token_burn
+
+Build a token burn transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Burner's public key |
+| `amount` | string | Yes | Amount to burn |
+
+<Callout type="error">
+  Burning must be enabled on the contract. The caller must have sufficient balance.
+</Callout>
+
+## Token Decimals
+
+When working with token amounts, always consider decimals:
+
+| Decimals | 1 Token = | Example |
+|----------|-----------|---------|
+| 0 | 1 | amount="1" |
+| 8 | 100,000,000 | amount="100000000" |
+| 18 | 1,000,000,000,000,000,000 | amount="1000000000000000000" |
+
+## CEP-18 Standard
+
+CSPR.AI tokens follow the CEP-18 standard, which provides:
+
+- Standard transfer and approval functions
+- Optional minting and burning
+- Metadata (name, symbol, decimals)
+- Events for all state changes
+
+## Next Steps
+
+- [NFT Tools](/docs/mcp-tools/nft-tools) - Work with NFTs
+- [Smart Contracts](/docs/smart-contracts) - Deploy your own token

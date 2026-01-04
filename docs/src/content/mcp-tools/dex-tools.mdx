@@ -1,0 +1,179 @@
+---
+title: DEX Tools
+description: AMM operations - pools, liquidity, and swaps
+---
+
+import { Callout } from 'nextra/components'
+
+# DEX Tools
+
+Tools for decentralized exchange operations on Casper Network.
+
+<Callout type="info">
+  DEX tools require `CASPER_DEX_CONTRACT_ADDRESS` for operations.
+</Callout>
+
+## casper_query_dex
+
+Query DEX contract state.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `contract_address` | string | Yes | DEX contract (`hash-...`) |
+| `query_type` | string | Yes | See query types below |
+| `pool_id` | string | No | Required for pool-specific queries |
+| `provider` | string | No | Required for lp_balance queries |
+| `token_in` | string | No | Required for swap_quote |
+| `amount_in` | string | No | Required for swap_quote |
+
+### Query Types
+
+#### pool
+
+Get pool details:
+
+```json
+{
+  "pool_id": "0",
+  "token_a": "hash-abc...",
+  "token_b": "hash-def...",
+  "reserve_a": "1000000000000",
+  "reserve_b": "500000000000",
+  "lp_supply": "707106781186",
+  "fee_bps": 30
+}
+```
+
+#### pool_count
+
+Get total number of pools.
+
+#### lp_balance
+
+Get LP token balance for a provider.
+
+#### reserves
+
+Get pool reserves.
+
+#### swap_quote
+
+Get estimated output for a swap:
+
+```
+Query: How much token B would I get for 1000 token A?
+```
+
+---
+
+## casper_build_dex_create_pool
+
+Build a pool creation transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Creator's public key |
+| `token_a` | string | Yes | First token address |
+| `token_b` | string | Yes | Second token address |
+
+<Callout>
+  Each token pair can only have one pool. Token addresses are automatically sorted.
+</Callout>
+
+---
+
+## casper_build_dex_add_liquidity
+
+Build a liquidity addition transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Provider's public key |
+| `pool_id` | string | Yes | Pool ID |
+| `amount_a` | string | Yes | Amount of token A |
+| `amount_b` | string | Yes | Amount of token B |
+| `min_lp_tokens` | string | Yes | Minimum LP tokens (slippage protection) |
+
+### LP Token Calculation
+
+- **First provider**: `LP = sqrt(amount_a * amount_b)`
+- **Subsequent**: `LP = min(amount_a/reserve_a, amount_b/reserve_b) * lp_supply`
+
+---
+
+## casper_build_dex_remove_liquidity
+
+Build a liquidity removal transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Provider's public key |
+| `pool_id` | string | Yes | Pool ID |
+| `lp_tokens` | string | Yes | LP tokens to burn |
+| `min_amount_a` | string | Yes | Minimum token A (slippage) |
+| `min_amount_b` | string | Yes | Minimum token B (slippage) |
+
+---
+
+## casper_build_dex_swap
+
+Build a swap transaction.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `from_public_key` | string | Yes | Trader's public key |
+| `pool_id` | string | Yes | Pool ID |
+| `token_in` | string | Yes | Token to swap from |
+| `amount_in` | string | Yes | Amount to swap |
+| `min_amount_out` | string | Yes | Minimum output (slippage) |
+
+### AMM Formula
+
+The DEX uses the constant product formula:
+
+```
+x * y = k
+```
+
+Output calculation:
+
+```
+amount_out = (amount_in * fee_factor * reserve_out) / (reserve_in + amount_in * fee_factor)
+fee_factor = 10000 - fee_bps (e.g., 9970 for 0.3% fee)
+```
+
+## Slippage Protection
+
+<Callout type="warning">
+  Always use slippage protection parameters (`min_lp_tokens`, `min_amount_out`, etc.) to protect against price changes.
+</Callout>
+
+A typical slippage tolerance is 0.5% - 1%:
+
+```javascript
+const slippageTolerance = 0.01 // 1%
+const minAmountOut = expectedOut * (1 - slippageTolerance)
+```
+
+## Token Approval
+
+Before adding liquidity or swapping, ensure tokens are approved:
+
+1. Check current allowance
+2. Approve DEX contract if needed
+3. Execute the DEX operation
+
+## Next Steps
+
+- [Smart Contracts](/docs/smart-contracts/dex) - Deploy your own DEX
+- [Token Tools](/docs/mcp-tools/token-tools) - Token operations

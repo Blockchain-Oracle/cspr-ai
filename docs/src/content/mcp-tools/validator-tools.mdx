@@ -1,0 +1,164 @@
+---
+title: Validator Tools
+description: Tools for querying Casper Network validators and staking
+---
+
+import { Callout } from 'nextra/components'
+
+# Validator Tools
+
+Tools for querying validators, rewards, and staking information.
+
+## casper_get_validators
+
+List active validators on the network.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `limit` | number | No | Max validators to return (1-100, default: 20) |
+| `offset` | number | No | Skip validators for pagination |
+| `response_format` | string | No | `markdown` or `json` |
+
+### Example
+
+```
+Query: Show me the top 10 validators on Casper
+```
+
+### Response (JSON)
+
+```json
+{
+  "validators": [
+    {
+      "public_key": "01abc...",
+      "total_stake_cspr": "50000000.00",
+      "delegation_rate": 10,
+      "delegator_count": 150
+    }
+  ],
+  "total_count": 100,
+  "has_more": true,
+  "next_offset": 20
+}
+```
+
+---
+
+## casper_get_current_validators
+
+Get all active validators for the current era with detailed info.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `page` | number | No | Page number (default: 1) |
+| `page_size` | number | No | Results per page (default: 20, max: 100) |
+| `order_direction` | string | No | `asc` or `desc` |
+
+### Response
+
+Returns validator list with:
+
+- Public keys
+- Total stakes and delegations
+- Delegation rates
+- Validator fees
+- Active status
+
+---
+
+## casper_get_validator_rewards
+
+Get reward history for a specific validator.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `validator_public_key` | string | Yes | Validator's public key |
+| `page` | number | No | Page number |
+| `page_size` | number | No | Results per page |
+| `order_direction` | string | No | Sort direction |
+
+### Example
+
+```
+Query: What are the rewards for validator 01abc...?
+```
+
+### Response
+
+Returns era-by-era reward data:
+
+- Rewards per era
+- Total amounts distributed
+- Delegator vs validator rewards
+- Era IDs and timestamps
+
+---
+
+## casper_get_validator_blocks
+
+Get blocks proposed by a specific validator.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `validator_public_key` | string | Yes | Validator's public key |
+| `page` | number | No | Page number |
+| `page_size` | number | No | Results per page |
+
+### Response
+
+Returns block information:
+
+- Block hashes and heights
+- Block timestamps
+- Era IDs
+- Deploy counts per block
+
+---
+
+## casper_get_auction_metrics
+
+Get current network auction and era metrics.
+
+### Example
+
+```
+Query: What's the current era on Casper?
+```
+
+### Response
+
+```json
+{
+  "current_era_id": 12345,
+  "total_staked": "5000000000.00",
+  "total_delegators": 50000,
+  "auction_state_hash": "abc123..."
+}
+```
+
+## Staking Best Practices
+
+<Callout type="info">
+  **Minimum Delegation**: 500 CSPR is required to delegate to a validator.
+</Callout>
+
+When choosing a validator, consider:
+
+1. **Delegation Rate** - Lower is better for delegators
+2. **Total Stake** - Higher stake means more security
+3. **Delegator Count** - Indicates community trust
+4. **Block Production** - Check recent activity
+
+## Next Steps
+
+- [Transaction Tools](/docs/mcp-tools/transaction-tools) - Build delegation transactions
+- [Account Tools](/docs/mcp-tools/account-tools) - Check your staking info

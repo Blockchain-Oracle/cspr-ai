@@ -1,0 +1,179 @@
+---
+title: HTTP Transport
+description: Using the CSPR.AI MCP server via HTTP
+---
+
+import { Callout } from 'nextra/components'
+
+# HTTP Transport
+
+The HTTP transport allows web applications to connect to the MCP server.
+
+## Configuration
+
+Start the server with HTTP transport:
+
+```bash
+CASPER_MCP_TRANSPORT=http MCP_PORT=3000 pnpm dev
+```
+
+## Endpoints
+
+### POST /mcp
+
+Main endpoint for all MCP operations.
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "casper_get_balance",
+      "arguments": {
+        "public_key": "01abc..."
+      }
+    }
+  }'
+```
+
+### GET /health
+
+Health check endpoint.
+
+```bash
+curl http://localhost:3000/health
+```
+
+Response:
+
+```json
+{
+  "status": "ok",
+  "network": "testnet",
+  "version": "1.0.0"
+}
+```
+
+## CORS Configuration
+
+Configure allowed origins:
+
+```bash
+CORS_ORIGINS=http://localhost:5173,https://yourdomain.com
+```
+
+<Callout type="warning">
+  In production, always specify explicit origins. Never use `*` for security.
+</Callout>
+
+## Request Examples
+
+### List Tools
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/list"
+  }'
+```
+
+### Query Balance
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "casper_get_balance",
+      "arguments": {
+        "public_key": "01abc123...",
+        "response_format": "json"
+      }
+    }
+  }'
+```
+
+### Build Transfer
+
+```bash
+curl -X POST http://localhost:3000/mcp \
+  -H "Content-Type: application/json" \
+  -d '{
+    "jsonrpc": "2.0",
+    "id": 1,
+    "method": "tools/call",
+    "params": {
+      "name": "casper_build_transfer",
+      "arguments": {
+        "from_public_key": "01abc...",
+        "to_public_key": "01def...",
+        "amount_cspr": 100
+      }
+    }
+  }'
+```
+
+## JavaScript Client
+
+```typescript
+async function callMcpTool(name: string, args: object) {
+  const response = await fetch('http://localhost:3000/mcp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: Date.now(),
+      method: 'tools/call',
+      params: { name, arguments: args }
+    })
+  })
+
+  const data = await response.json()
+
+  if (data.error) {
+    throw new Error(data.error.message)
+  }
+
+  return data.result
+}
+
+// Usage
+const balance = await callMcpTool('casper_get_balance', {
+  public_key: '01abc...',
+  response_format: 'json'
+})
+```
+
+## Error Responses
+
+HTTP-level errors:
+
+| Status | Description |
+|--------|-------------|
+| 400 | Invalid request format |
+| 404 | Endpoint not found |
+| 500 | Server error |
+
+MCP-level errors are returned with status 200 but include an `error` field.
+
+## Security Considerations
+
+1. **Use HTTPS** in production
+2. **Configure CORS** properly
+3. **Rate limit** requests
+4. **Validate inputs** on client side
+5. **Never expose** secret keys
+
+## Next Steps
+
+- [Stdio Transport](/docs/api-reference/stdio-transport) - For Claude Desktop
+- [Error Codes](/docs/api-reference/error-codes) - Error reference

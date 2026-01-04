@@ -1,0 +1,146 @@
+---
+title: Account Tools
+description: Tools for querying Casper Network account information
+---
+
+import { Callout } from 'nextra/components'
+
+# Account Tools
+
+Tools for querying account balances, transaction history, and delegations.
+
+## casper_get_balance
+
+Query the CSPR balance of an account.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `public_key` | string | Yes | Casper public key (66-68 chars) |
+| `response_format` | string | No | `markdown` or `json` (default: `markdown`) |
+
+### Example
+
+```
+Query: What's the balance of 01abc123...?
+```
+
+### Response (JSON)
+
+```json
+{
+  "public_key": "01abc123...",
+  "balance_cspr": "1000.50",
+  "balance_motes": "1000500000000",
+  "network": "testnet"
+}
+```
+
+<Callout>
+  1 CSPR = 1,000,000,000 motes (10^9)
+</Callout>
+
+---
+
+## casper_get_staking_info
+
+Query staking/delegation information for an account.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `public_key` | string | Yes | Delegator's public key |
+| `response_format` | string | No | `markdown` or `json` |
+
+### Example
+
+```
+Query: What are my delegations?
+```
+
+### Response (JSON)
+
+```json
+{
+  "delegator": "01abc123...",
+  "delegations": [
+    {
+      "validator_public_key": "01def456...",
+      "staked_amount_cspr": "10000.00"
+    }
+  ],
+  "total_staked_cspr": "10000.00"
+}
+```
+
+---
+
+## casper_get_account_deploys
+
+Get all transactions for an account.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `account_identifier` | string | Yes | Public key or account hash |
+| `page` | number | No | Page number (default: 1) |
+| `page_size` | number | No | Results per page (default: 20, max: 100) |
+| `order_direction` | string | No | `asc` or `desc` (default: `desc`) |
+
+### Example
+
+```
+Query: Show me the recent transactions for 01abc...
+```
+
+---
+
+## casper_get_account_transfers
+
+Get CSPR transfer history for an account.
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `account_identifier` | string | Yes | Public key or account hash |
+| `page` | number | No | Page number |
+| `page_size` | number | No | Results per page |
+| `order_direction` | string | No | Sort direction |
+
+### Example
+
+```
+Query: Show me the CSPR transfers for account 01abc...
+```
+
+### Response
+
+Returns list of transfers including:
+
+- Transfer amount in CSPR
+- Initiator and recipient addresses
+- Deploy hash for verification
+- Block height and timestamp
+- Direction (sent/received)
+
+## Public Key Format
+
+Casper uses two key types:
+
+| Type | Prefix | Length | Example |
+|------|--------|--------|---------|
+| Ed25519 | `01` | 66 chars | `01abc123...` |
+| Secp256k1 | `02` | 68 chars | `02def456...` |
+
+<Callout type="warning">
+  Always verify the public key format before querying. Invalid keys will return an error.
+</Callout>
+
+## Next Steps
+
+- [Validator Tools](/docs/mcp-tools/validator-tools) - Query validator information
+- [Transaction Tools](/docs/mcp-tools/transaction-tools) - Build transactions

@@ -1,0 +1,152 @@
+---
+title: Stdio Transport
+description: Using CSPR.AI MCP server with Claude Desktop
+---
+
+import { Callout } from 'nextra/components'
+
+# Stdio Transport
+
+The stdio transport is used for direct integration with AI assistants like Claude Desktop.
+
+## How It Works
+
+The MCP server communicates via standard input/output:
+
+```
+AI Assistant ←→ stdin/stdout ←→ MCP Server ←→ Casper Network
+```
+
+Messages are JSON-RPC formatted, one per line.
+
+## Claude Desktop Configuration
+
+Add CSPR.AI to your Claude Desktop config:
+
+### macOS
+
+```json filename="~/Library/Application Support/Claude/claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["/path/to/casper-mcp/mcp-server/dist/index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet",
+        "CASPER_RPC_URL": "https://node.testnet.cspr.cloud/rpc"
+      }
+    }
+  }
+}
+```
+
+### Windows
+
+```json filename="%APPDATA%\\Claude\\claude_desktop_config.json"
+{
+  "mcpServers": {
+    "casper": {
+      "command": "node",
+      "args": ["C:\\path\\to\\casper-mcp\\mcp-server\\dist\\index.js"],
+      "env": {
+        "CASPER_NETWORK": "testnet"
+      }
+    }
+  }
+}
+```
+
+## Building for Stdio
+
+Build the production version:
+
+```bash
+cd mcp-server
+pnpm build
+```
+
+The output will be in `dist/index.js`.
+
+## Environment Variables
+
+Configure via the `env` section:
+
+```json
+{
+  "env": {
+    "CASPER_NETWORK": "testnet",
+    "CASPER_RPC_URL": "https://node.testnet.cspr.cloud/rpc",
+    "CASPER_SECRET_KEY": "optional-for-signing"
+  }
+}
+```
+
+<Callout type="warning">
+  If using `CASPER_SECRET_KEY`, ensure your config file has appropriate permissions.
+</Callout>
+
+## Verifying Connection
+
+After configuring, restart Claude Desktop. You should see:
+
+1. Casper tools in the tools list
+2. Ability to query balances, validators, etc.
+3. Transaction building capabilities
+
+## Debugging
+
+### View Logs
+
+Enable verbose logging:
+
+```json
+{
+  "env": {
+    "DEBUG": "mcp:*"
+  }
+}
+```
+
+### Test Manually
+
+Test the server from command line:
+
+```bash
+echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
+  node dist/index.js
+```
+
+## Protocol Messages
+
+### Initialization
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"0.1.0"}}
+```
+
+### Tool Call
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"casper_get_balance","arguments":{"public_key":"01abc..."}}}
+```
+
+## Best Practices
+
+1. **Build First** - Always run `pnpm build` before configuring
+2. **Absolute Paths** - Use full paths in configuration
+3. **Test Locally** - Verify server works before Claude integration
+4. **Check Permissions** - Ensure node can access the file
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Tools not appearing | Restart Claude Desktop |
+| Permission denied | Check file permissions |
+| Module not found | Run `pnpm build` |
+| Network errors | Verify RPC URL |
+
+## Next Steps
+
+- [HTTP Transport](/docs/api-reference/http-transport) - For web apps
+- [Configuration](/docs/getting-started/configuration) - All options

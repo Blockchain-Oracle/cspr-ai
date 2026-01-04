@@ -1,0 +1,183 @@
+---
+title: DAO Governance Contract
+description: On-chain governance with proposals, voting, and execution
+---
+
+import { Callout } from 'nextra/components'
+
+# DAO Governance Contract
+
+A decentralized autonomous organization contract for on-chain governance.
+
+## Features
+
+- Token-weighted voting
+- Configurable voting periods
+- Proposal threshold and quorum
+- Multiple action types
+- Timelock for execution
+
+## Contract Structure
+
+```rust
+#[odra::module]
+pub struct Dao {
+    governance_token: Var<Address>,
+    voting_period: Var<u64>,
+    proposal_threshold: Var<U256>,
+    quorum: Var<U256>,
+    proposals: Mapping<u64, Proposal>,
+    votes: Mapping<(u64, Address), Vote>,
+    proposal_count: Var<u64>,
+    ownable: SubModule<Ownable>,
+}
+```
+
+## Proposal Lifecycle
+
+```
+Created → Active → Voting → Counting → Approved/Defeated → Executed
+```
+
+1. **Created**: Proposal submitted
+2. **Active**: Waiting for voting to start
+3. **Voting**: Token holders can vote
+4. **Counting**: Votes being tallied
+5. **Approved/Defeated**: Based on quorum and majority
+6. **Executed**: Action performed (if approved)
+
+## Action Types
+
+### Mint Tokens
+
+```rust
+ActionType::MintTokens {
+    recipient: Address,
+    amount: U256
+}
+```
+
+Mint new governance tokens to an address.
+
+### Treasury Transfer
+
+```rust
+ActionType::TreasuryTransfer {
+    recipient: Address,
+    amount: U256
+}
+```
+
+Transfer funds from the DAO treasury.
+
+### Update Voting Period
+
+```rust
+ActionType::UpdateVotingPeriod {
+    new_period: u64
+}
+```
+
+Change the voting period duration.
+
+### Custom
+
+```rust
+ActionType::Custom {
+    description: String
+}
+```
+
+Custom action for off-chain execution.
+
+## Configuration
+
+| Parameter | Description | Example |
+|-----------|-------------|---------|
+| `voting_period` | Duration for voting (ms) | 604800000 (1 week) |
+| `proposal_threshold` | Minimum tokens to propose | 1000 |
+| `quorum` | Minimum votes required | 10000 |
+
+## Deployment Example
+
+```
+Deploy a DAO with governance token hash-abc...,
+7-day voting period, 1000 token proposal threshold,
+and 10000 token quorum
+```
+
+## Usage Examples
+
+### Create Proposal
+
+```
+Create a proposal to transfer 5000 tokens from treasury to 01abc...
+```
+
+### Vote on Proposal
+
+```
+Vote yes on proposal #1 with 500 voting power
+```
+
+### Check Proposal Status
+
+```
+What's the status of proposal #1?
+```
+
+### Execute Proposal
+
+```
+Execute proposal #1
+```
+
+## Voting Power
+
+Voting power is determined by governance token balance at the time of voting:
+
+```
+voting_power = token_balance
+```
+
+<Callout type="info">
+  Token holders can split their votes across multiple proposals or allocate partial voting power.
+</Callout>
+
+## Events
+
+| Event | Description |
+|-------|-------------|
+| `ProposalCreated` | New proposal submitted |
+| `VoteCast` | Vote recorded |
+| `ProposalExecuted` | Proposal action executed |
+| `ProposalDefeated` | Proposal failed to pass |
+
+## Security
+
+The DAO contract includes:
+
+- Double-voting prevention
+- Quorum requirements
+- Proposal threshold
+- Access control for execution
+- Timelock delays (optional)
+
+<Callout type="warning">
+  Governance decisions are irreversible once executed. Ensure proper quorum and majority thresholds.
+</Callout>
+
+## Testing
+
+```bash
+# Run DAO tests
+cargo odra test -c dao
+
+# Test with CasperVM
+cargo odra test -c dao -b casper
+```
+
+## Next Steps
+
+- [DEX Contract](/docs/smart-contracts/dex) - AMM
+- [DAO Tools](/docs/mcp-tools/dao-tools) - MCP tool reference
