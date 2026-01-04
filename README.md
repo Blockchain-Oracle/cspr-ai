@@ -2,6 +2,28 @@
 
 AI-powered Model Context Protocol (MCP) server for Casper Network blockchain integration. Enables natural language interaction with Casper blockchain through Claude, Cursor, and other MCP-compatible AI assistants.
 
+## Live Deployment
+
+CSPR.AI is live and ready to use:
+
+| Service | URL |
+|---------|-----|
+| **Documentation** | https://docs.cspr-ai.xyz |
+| **Web Dashboard** | https://cspr-ai.xyz |
+| **MCP API** | https://mcp.cspr-ai.xyz/mcp |
+| **Health Check** | https://mcp.cspr-ai.xyz/health |
+
+## Deployed Smart Contracts (Testnet)
+
+| Contract | Description | Explorer Link |
+|----------|-------------|---------------|
+| **Token (CEP-18)** | Fungible token with mint/burn | [View on Testnet](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
+| **NFT Collection** | NFT with metadata support | [View on Testnet](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
+| **Governance DAO** | Proposal and voting system | [View on Testnet](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
+| **AMM DEX** | Token swaps and liquidity pools | [View on Testnet](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
+
+See [contracts/README.md](./contracts/README.md) for full documentation.
+
 ## Documentation
 
 | Component | Description | Link |
@@ -32,28 +54,6 @@ AI-powered Model Context Protocol (MCP) server for Casper Network blockchain int
 - [Project Structure](#project-structure)
 - [Contributing](#contributing)
 - [License](#license)
-
-## Live Deployment
-
-CSPR.AI is live and ready to use:
-
-| Service | URL |
-|---------|-----|
-| **Documentation** | https://docs.cspr-ai.xyz |
-| **Web Dashboard** | https://cspr-ai.xyz |
-| **MCP API** | https://mcp.cspr-ai.xyz/mcp |
-| **Health Check** | https://mcp.cspr-ai.xyz/health |
-
-### Deployed Smart Contracts (Testnet)
-
-| Contract | Description | Explorer Link |
-|----------|-------------|---------------|
-| **Token (CEP-18)** | Fungible token with mint/burn | [View on Testnet](https://testnet.cspr.live/contract-package/b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05) |
-| **NFT Collection** | NFT with metadata support | [View on Testnet](https://testnet.cspr.live/contract-package/195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b) |
-| **Governance DAO** | Proposal and voting system | [View on Testnet](https://testnet.cspr.live/contract-package/91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f) |
-| **AMM DEX** | Token swaps and liquidity pools | [View on Testnet](https://testnet.cspr.live/contract-package/7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1) |
-
-See [contracts/README.md](./contracts/README.md) for full documentation.
 
 ## Overview
 
