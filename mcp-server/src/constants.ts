@@ -61,10 +61,11 @@ export const MAX_MEMO_LENGTH = 100;
 
 export const CSPR_AI_CONTRACTS = {
   testnet: {
-    token: "hash-810963e7e989ccc987683a2d1bcb4e17762f6511f06c306393dfd84c4db10995",
-    nft: "hash-5536ec2a8dbfd8d10328dec3b424df9b6c3fe8ac2af43910aa33f102d26bb33c",
-    dao: "hash-34690764369a383b8b28f9258f2fcfe3724d27c368b3cd6faf255db5c3e0ab86",
-    dex: "hash-5909fb339b1c63c6df67180a2efbcdab41fa234bc8a85ebc96c7faa5aa1e3e94"
+    // January 2025 Odra deployment (from contracts/deployment.log)
+    token: "contract-package-b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05",
+    nft: "contract-package-195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b",
+    dao: "contract-package-91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f",
+    dex: "contract-package-7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1"
   },
   mainnet: {
     token: null,  // Not yet deployed

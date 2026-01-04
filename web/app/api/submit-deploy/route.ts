@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * API endpoint to submit a signed deploy to the Casper network
+ * API endpoint to submit a signed deploy/transaction to the Casper network
  *
  * This endpoint:
- * 1. Receives a signed deploy JSON from the wallet
- * 2. Submits it to the network via RPC
- * 3. Returns the network-confirmed deploy hash
+ * 1. Receives a signed deploy/transaction JSON from the wallet
+ * 2. Detects the format (Deploy vs Transaction V1)
+ * 3. Submits it to the network via appropriate RPC method
+ * 4. Returns the network-confirmed hash
+ *
+ * Casper network supports two formats:
+ * - Deploy (Casper 1.5): Uses account_put_deploy with { deploy: ... }
+ * - Transaction V1 (Casper 2.0): Uses account_put_transaction with { transaction: ... }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -14,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     if (!signedDeploy) {
       return NextResponse.json(
-        { error: 'Missing signed deploy' },
+        { error: 'Missing signed deploy/transaction' },
         { status: 400 }
       );
     }
@@ -27,7 +32,46 @@ export async function POST(req: NextRequest) {
     // Get API key for cspr.cloud RPC
     const apiKey = process.env.CSPR_CLOUD_API_KEY;
 
-    // Submit deploy via RPC account_put_deploy method
+    // Detect format: Transaction V1 has Version1 wrapper, Deploy has header/payment/session directly
+    const isTransactionV1 = signedDeploy?.Version1 !== undefined;
+    const isDeployFormat = signedDeploy?.header && signedDeploy?.payment && signedDeploy?.session;
+
+    console.log('[submit-deploy] Network:', network);
+    console.log('[submit-deploy] RPC URL:', rpcUrl);
+    console.log('[submit-deploy] Format detected:', isTransactionV1 ? 'Transaction V1' : isDeployFormat ? 'Deploy' : 'Unknown');
+    console.log('[submit-deploy] Hash:', signedDeploy?.hash || signedDeploy?.Version1?.hash);
+    console.log('[submit-deploy] Approvals count:', signedDeploy?.approvals?.length || signedDeploy?.Version1?.approvals?.length || 0);
+
+    // Debug: Log full deploy structure
+    if (isDeployFormat) {
+      console.log('[submit-deploy] Deploy header:', JSON.stringify(signedDeploy?.header));
+      console.log('[submit-deploy] Deploy payment keys:', Object.keys(signedDeploy?.payment || {}));
+      console.log('[submit-deploy] Deploy session keys:', Object.keys(signedDeploy?.session || {}));
+      console.log('[submit-deploy] Deploy payment:', JSON.stringify(signedDeploy?.payment));
+    }
+
+    // Choose RPC method and params based on format
+    let rpcMethod: string;
+    let rpcParams: object;
+
+    if (isTransactionV1) {
+      // Transaction V1 format - use account_put_transaction
+      rpcMethod = 'account_put_transaction';
+      rpcParams = { transaction: signedDeploy };
+      console.log('[submit-deploy] Using account_put_transaction');
+    } else if (isDeployFormat) {
+      // Deploy format - use account_put_deploy
+      rpcMethod = 'account_put_deploy';
+      rpcParams = { deploy: signedDeploy };
+      console.log('[submit-deploy] Using account_put_deploy');
+    } else {
+      // Unknown format - try wrapping as transaction
+      console.log('[submit-deploy] Unknown format, attempting as transaction wrapper');
+      rpcMethod = 'account_put_transaction';
+      rpcParams = { transaction: { Version1: signedDeploy } };
+    }
+
+    // Submit to network
     const response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
@@ -36,10 +80,8 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         jsonrpc: '2.0',
-        method: 'account_put_deploy',
-        params: {
-          deploy: signedDeploy,
-        },
+        method: rpcMethod,
+        params: rpcParams,
         id: 1,
       }),
     });
@@ -69,20 +111,27 @@ export async function POST(req: NextRequest) {
 
     // Check for RPC errors
     if (result.error) {
+      console.error('RPC error details:', JSON.stringify(result.error, null, 2));
       return NextResponse.json(
-        { error: `Network submission failed: ${result.error.message}` },
+        {
+          error: `Network submission failed: ${result.error.message}`,
+          rpcError: result.error,
+          deploySubmitted: JSON.stringify(signedDeploy).substring(0, 500) + '...'
+        },
         { status: 500 }
       );
     }
 
-    // Extract deploy hash from network response
-    const deployHash = result.result?.deploy_hash;
+    // Extract hash from network response (deploy_hash for Deploy, transaction_hash for Transaction V1)
+    const deployHash = result.result?.deploy_hash || result.result?.transaction_hash;
     if (!deployHash) {
+      console.log('[submit-deploy] Full result:', JSON.stringify(result.result));
       return NextResponse.json(
-        { error: 'Network did not return a deploy hash' },
+        { error: 'Network did not return a deploy/transaction hash', result: result.result },
         { status: 500 }
       );
     }
+    console.log('[submit-deploy] Success! Hash:', deployHash);
 
     // Generate explorer URL
     const explorerBase = network === 'mainnet'

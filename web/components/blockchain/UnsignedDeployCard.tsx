@@ -60,6 +60,14 @@ export function UnsignedDeployCard({
     const isContractCall = session?.StoredContractByHash !== undefined || session?.stored_contract_by_hash !== undefined;
     const isContractDeployment = session?.ModuleBytes !== undefined || session?.module_bytes !== undefined;
 
+    // Also recognize StoredContractByName (used for delegation to auction contract)
+    const isContractByName = session?.StoredContractByName !== undefined || session?.stored_contract_by_name !== undefined;
+
+    // Recognize simplified MCP format (has deploy_type or contract_address at root level, no session)
+    const isSimplifiedFormat = deploy?.deploy_type !== undefined ||
+                               (deploy?.contract_address !== undefined && !session) ||
+                               (deploy?.entry_point !== undefined && !session);
+
     // Only check for placeholder in contract deployments
     let needsWasmCompilation = false;
     if (isContractDeployment) {
@@ -72,13 +80,17 @@ export function UnsignedDeployCard({
       isNativeTransfer,
       isContractCall,
       isContractDeployment,
+      isContractByName,
+      isSimplifiedFormat,
       needsWasmCompilation,
     };
   }, [data.unsigned_deploy]);
 
-  // Can sign if it's a transfer, contract call, or a contract deployment with real WASM
+  // Can sign if it's a transfer, contract call, contract by name, simplified format, or a contract deployment with real WASM
   const canSign = deployAnalysis.isNativeTransfer ||
                   deployAnalysis.isContractCall ||
+                  deployAnalysis.isContractByName ||
+                  deployAnalysis.isSimplifiedFormat ||
                   (deployAnalysis.isContractDeployment && !deployAnalysis.needsWasmCompilation);
 
   return (

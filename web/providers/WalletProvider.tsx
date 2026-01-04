@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ActiveAccount, WalletContextValue, SignDeployResult } from '@/types/wallet';
+import { ActiveAccount, WalletContextValue, SignDeployResult, SendTransactionResult, TransactionStatusUpdate } from '@/types/wallet';
 
 // Create wallet context
 const WalletContext = React.createContext<WalletContextValue | null>(null);
@@ -28,6 +28,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
   const [isSigning, setIsSigning] = React.useState(false);
   const iframeRef = React.useRef<HTMLIFrameElement>(null);
   const pendingRequests = React.useRef<Map<string, (result: unknown) => void>>(new Map());
+  const statusCallbacks = React.useRef<Map<string, (update: TransactionStatusUpdate) => void>>(new Map());
 
   // Send message to iframe
   const sendMessage = React.useCallback((type: string, payload?: Record<string, unknown>): Promise<unknown> => {
@@ -96,6 +97,17 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
           break;
 
         case 'wallet:signResult':
+          if (payload && typeof payload === 'object' && 'requestId' in payload) {
+            const { requestId, ...result } = payload as { requestId: string; [key: string]: unknown };
+            const resolver = pendingRequests.current.get(requestId);
+            if (resolver) {
+              pendingRequests.current.delete(requestId);
+              // Pass the entire payload (minus requestId) as the result
+              resolver(result);
+            }
+          }
+          break;
+
         case 'wallet:sendResult':
           if (payload && typeof payload === 'object' && 'requestId' in payload) {
             const { requestId, ...result } = payload as { requestId: string; [key: string]: unknown };
@@ -104,6 +116,23 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
               pendingRequests.current.delete(requestId);
               // Pass the entire payload (minus requestId) as the result
               resolver(result);
+            }
+          }
+          break;
+
+        case 'wallet:sendStatusUpdate':
+          // Forward status updates to registered callback
+          if (payload && typeof payload === 'object' && 'requestId' in payload) {
+            const { requestId, status, data } = payload as {
+              requestId: string;
+              status: string;
+              data: unknown
+            };
+            // Status updates are handled by the callback passed to sendTransaction
+            // The callback is stored in a separate map (statusCallbacks)
+            const callback = statusCallbacks.current.get(requestId);
+            if (callback) {
+              callback({ status: status as TransactionStatusUpdate['status'], data: data as TransactionStatusUpdate['data'] });
             }
           }
           break;
@@ -217,6 +246,106 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     }
   }, [isReady, activeAccount, sendMessage]);
 
+  /**
+   * Send a transaction using CSPR.click's send() method
+   * This handles BOTH signing AND submission in one step (recommended approach)
+   *
+   * @param transaction - The transaction object to send
+   * @param onStatusUpdate - Optional callback for status updates during the process
+   * @returns SendTransactionResult with success/error status
+   */
+  const sendTransaction = React.useCallback(async (
+    transaction: object,
+    onStatusUpdate?: (update: TransactionStatusUpdate) => void
+  ): Promise<SendTransactionResult> => {
+    if (!isReady) {
+      return { success: false, error: 'Wallet bridge not ready' };
+    }
+    if (!activeAccount) {
+      return { success: false, error: 'No wallet connected' };
+    }
+
+    setIsSigning(true);
+
+    // Generate a unique request ID for this transaction
+    const requestId = `send_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    // Register status callback if provided
+    if (onStatusUpdate) {
+      statusCallbacks.current.set(requestId, onStatusUpdate);
+    }
+
+    try {
+      const result = await new Promise<unknown>((resolve, reject) => {
+        const iframe = iframeRef.current;
+        if (!iframe?.contentWindow) {
+          reject(new Error('Wallet bridge not ready'));
+          return;
+        }
+
+        // Store pending request for async response
+        pendingRequests.current.set(requestId, resolve);
+
+        // Set timeout for request (2 minutes for transaction processing)
+        setTimeout(() => {
+          if (pendingRequests.current.has(requestId)) {
+            pendingRequests.current.delete(requestId);
+            statusCallbacks.current.delete(requestId);
+            reject(new Error('Transaction timeout'));
+          }
+        }, 120000);
+
+        // Send the transaction to the wallet bridge
+        iframe.contentWindow.postMessage({
+          type: 'wallet:send',
+          payload: { transaction },
+          requestId
+        }, '*');
+      });
+
+      if (!result) {
+        return { success: false, cancelled: true };
+      }
+
+      const sendResult = result as {
+        success?: boolean;
+        deployHash?: string;
+        error?: string;
+        errorData?: unknown;
+        cancelled?: boolean;
+        data?: unknown;
+      };
+
+      if (sendResult.cancelled) {
+        return { success: false, cancelled: true };
+      }
+
+      if (sendResult.error) {
+        return {
+          success: false,
+          error: sendResult.error,
+          errorData: sendResult.errorData,
+          deployHash: sendResult.deployHash,
+        };
+      }
+
+      return {
+        success: true,
+        deployHash: sendResult.deployHash,
+      };
+    } catch (error) {
+      console.error('[WalletProvider] Send error:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to send transaction',
+      };
+    } finally {
+      setIsSigning(false);
+      // Clean up status callback
+      statusCallbacks.current.delete(requestId);
+    }
+  }, [isReady, activeAccount]);
+
   const value: WalletContextValue = {
     activeAccount,
     isConnecting,
@@ -227,6 +356,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     signOut,
     disconnect,
     signDeploy,
+    sendTransaction,
   };
 
   return (
@@ -264,6 +394,7 @@ const defaultWalletState: WalletContextValue = {
   signOut: () => {},
   disconnect: () => {},
   signDeploy: async () => ({ success: false, error: 'Wallet not initialized' }),
+  sendTransaction: async () => ({ success: false, error: 'Wallet not initialized' }),
 };
 
 /**

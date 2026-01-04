@@ -140,17 +140,20 @@ export function buildStoredContractDeploy(
   entryPoint: string,
   args: ContractArg[]
 ): UnsignedStoredContractDeploy {
-  // Detect hash type from address format
-  const isPackageHash = contractAddress.startsWith("contract-package-");
+  // Strip prefix from address
   const hash = contractAddress.replace("hash-", "").replace("contract-package-", "");
 
+  // CRITICAL: Always use 'package' hash_type for Casper 1.5 network
+  // This ensures signing.ts uses byPackageHash() which produces StoredVersionedContractByHash
+  // Using 'contract' causes byHash() which produces StoredContractByHash and fails with
+  // "Invalid Deploy" errors on the network
   return {
     header: createDeployHeader(account, chainName),
     payment: createPayment(),
     session: {
       stored_contract_by_hash: {
         hash,
-        hash_type: isPackageHash ? 'package' : 'contract',
+        hash_type: 'package',
         entry_point: entryPoint,
         args
       }

@@ -232,6 +232,119 @@
             }, '*');
           }
           break;
+
+        case 'wallet:send':
+          // Handle transaction send request (sign + submit in one step)
+          // This is the RECOMMENDED way per CSPR.click documentation
+          const { payload: sendPayload, requestId: sendRequestId } = event.data;
+          console.log('Sending transaction...', sendPayload);
+
+          if (!sendPayload || !sendPayload.transaction) {
+            window.parent.postMessage({
+              type: 'wallet:sendResult',
+              payload: { error: 'No transaction provided', requestId: sendRequestId }
+            }, '*');
+            break;
+          }
+
+          try {
+            const account = window.csprclick.getActiveAccount();
+            if (!account) {
+              window.parent.postMessage({
+                type: 'wallet:sendResult',
+                payload: { error: 'No wallet connected', requestId: sendRequestId }
+              }, '*');
+              break;
+            }
+
+            const walletPublicKey = account.public_key;
+            console.log('Wallet public key:', walletPublicKey);
+            console.log('Transaction to send:', JSON.stringify(sendPayload.transaction).substring(0, 500));
+
+            // Define status callback to forward updates to parent
+            const onStatusUpdate = function(status, data) {
+              console.log('Transaction status update:', status, data);
+              window.parent.postMessage({
+                type: 'wallet:sendStatusUpdate',
+                payload: {
+                  status: status,
+                  data: data,
+                  requestId: sendRequestId
+                }
+              }, '*');
+
+              // Check for terminal states
+              if (status === 'cancelled') {
+                window.parent.postMessage({
+                  type: 'wallet:sendResult',
+                  payload: { cancelled: true, requestId: sendRequestId }
+                }, '*');
+              } else if (status === 'error') {
+                window.parent.postMessage({
+                  type: 'wallet:sendResult',
+                  payload: {
+                    error: data?.error || data?.errorData || 'Transaction failed',
+                    errorData: data,
+                    requestId: sendRequestId
+                  }
+                }, '*');
+              } else if (status === 'processed') {
+                // Transaction was processed - check if successful
+                if (data?.csprCloudTransaction?.error_message === null) {
+                  window.parent.postMessage({
+                    type: 'wallet:sendResult',
+                    payload: {
+                      success: true,
+                      deployHash: data?.deployHash || data?.transactionHash,
+                      data: data,
+                      requestId: sendRequestId
+                    }
+                  }, '*');
+                } else {
+                  window.parent.postMessage({
+                    type: 'wallet:sendResult',
+                    payload: {
+                      error: data?.csprCloudTransaction?.error_message || 'Transaction failed on chain',
+                      deployHash: data?.deployHash || data?.transactionHash,
+                      errorData: data,
+                      requestId: sendRequestId
+                    }
+                  }, '*');
+                }
+              }
+            };
+
+            // Use CSPR.click send() - handles signing AND submission
+            console.log('Calling csprclick.send() with transaction...');
+            window.csprclick.send(sendPayload.transaction, walletPublicKey, onStatusUpdate)
+              .catch(function(sendError) {
+                console.error('Send error:', sendError);
+                if (sendError && (sendError.cancelled || sendError.message === 'User rejected')) {
+                  window.parent.postMessage({
+                    type: 'wallet:sendResult',
+                    payload: { cancelled: true, requestId: sendRequestId }
+                  }, '*');
+                } else {
+                  window.parent.postMessage({
+                    type: 'wallet:sendResult',
+                    payload: {
+                      error: sendError?.message || 'Failed to send transaction',
+                      requestId: sendRequestId
+                    }
+                  }, '*');
+                }
+              });
+          } catch (err) {
+            console.error('Send exception:', err);
+            window.parent.postMessage({
+              type: 'wallet:sendResult',
+              payload: {
+                error: err?.message || 'Send failed',
+                requestId: sendRequestId
+              }
+            }, '*');
+          }
+          break;
       }
     });
 

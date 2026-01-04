@@ -35,7 +35,7 @@ interface SignedDeployState {
 }
 
 export default function ChatPage() {
-  const { isConnected, activeAccount, signDeploy } = useWallet();
+  const { isConnected, activeAccount, signDeploy, sendTransaction } = useWallet();
   const [inputValue, setInputValue] = React.useState('');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = React.useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = React.useState(false);
@@ -286,6 +286,7 @@ export default function ChatPage() {
   }>({ isActive: false });
 
   // Handler for signing deploys
+  // Uses CSPR.click's send() method which handles BOTH signing AND submission
   const handleSignDeploy = React.useCallback(async (unsignedDeploy: UnsignedDeployData) => {
     if (!unsignedDeploy.unsigned_deploy) {
       setSigningStatus({
@@ -319,6 +320,7 @@ export default function ChatPage() {
       let deployFormat;
       try {
         deployFormat = convertToDeployFormat(unsignedDeploy.unsigned_deploy);
+        console.log('[handleSignDeploy] Converted deploy format:', JSON.stringify(deployFormat).substring(0, 500));
       } catch (conversionError) {
         const errorMsg = conversionError instanceof Error ? conversionError.message : 'Transaction format conversion failed';
         setSignedDeploys(prev => new Map(prev).set(deployKey, {
@@ -335,83 +337,63 @@ export default function ChatPage() {
         return;
       }
 
-      // Step 2: Sign the deploy with wallet
-      const result = await signDeploy(deployFormat);
+      // Step 2: Use CSPR.click's send() - handles BOTH signing AND submission
+      // This is the recommended approach per CSPR.click documentation
+      const result = await sendTransaction(deployFormat, (statusUpdate) => {
+        // Handle status updates from CSPR.click
+        console.log('[handleSignDeploy] Status update:', statusUpdate);
+
+        switch (statusUpdate.status) {
+          case 'signing':
+            setSigningStatus({
+              isActive: true,
+              message: 'Signing transaction...',
+              type: 'info',
+            });
+            break;
+          case 'submitted':
+            setSigningStatus({
+              isActive: true,
+              message: 'Transaction submitted to network...',
+              type: 'info',
+            });
+            break;
+          case 'pending':
+            setSigningStatus({
+              isActive: true,
+              message: 'Transaction pending...',
+              type: 'info',
+            });
+            break;
+        }
+      });
 
       if (result.success) {
-        // Step 3: Submit signed deploy to network
-        setSigningStatus({
-          isActive: true,
-          message: 'Submitting transaction to network...',
-          type: 'info',
-        });
+        // Transaction signed and submitted successfully via CSPR.click
+        setSignedDeploys(prev => new Map(prev).set(deployKey, {
+          isLoading: false,
+          isSigned: true,
+          deployHash: result.deployHash,
+        }));
 
-        try {
-          const submitResponse = await fetch('/api/submit-deploy', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              signedDeploy: result.signedDeploy,
-              network,
-            }),
-          });
-
-          const submitResult = await submitResponse.json();
-
-          if (submitResult.success) {
-            // Update with network-confirmed state
-            setSignedDeploys(prev => new Map(prev).set(deployKey, {
-              isLoading: false,
-              isSigned: true,
-              deployHash: submitResult.deployHash,
-            }));
-
-            // Persist to database
-            if (conversationId) {
-              await saveDeployState({
-                conversationId,
-                deployKey,
-                status: 'signed',
-                deployHash: submitResult.deployHash,
-                network,
-              });
-            }
-
-            setSigningStatus({
-              isActive: true,
-              message: `Transaction submitted! Hash: ${submitResult.deployHash.slice(0, 16)}...`,
-              type: 'success',
-            });
-          } else {
-            // Network submission failed
-            setSignedDeploys(prev => new Map(prev).set(deployKey, {
-              isLoading: false,
-              isSigned: false,
-              error: submitResult.error || 'Failed to submit to network',
-            }));
-
-            setSigningStatus({
-              isActive: true,
-              message: submitResult.error || 'Failed to submit to network',
-              type: 'error',
-            });
-          }
-        } catch (submitError) {
-          // Network submission error
-          setSignedDeploys(prev => new Map(prev).set(deployKey, {
-            isLoading: false,
-            isSigned: false,
-            error: submitError instanceof Error ? submitError.message : 'Network submission failed',
-          }));
-
-          setSigningStatus({
-            isActive: true,
-            message: submitError instanceof Error ? submitError.message : 'Network submission failed',
-            type: 'error',
+        // Persist to database
+        if (conversationId && result.deployHash) {
+          await saveDeployState({
+            conversationId,
+            deployKey,
+            status: 'signed',
+            deployHash: result.deployHash,
+            network,
           });
         }
+
+        setSigningStatus({
+          isActive: true,
+          message: result.deployHash
+            ? `Transaction submitted! Hash: ${result.deployHash.slice(0, 16)}...`
+            : 'Transaction submitted successfully!',
+          type: 'success',
+        });
       } else if (result.cancelled) {
         // Clear loading state on cancellation
         setSignedDeploys(prev => {
@@ -426,16 +408,18 @@ export default function ChatPage() {
           type: 'info',
         });
       } else {
-        // Update with error state
+        // Transaction failed
+        const errorMsg = result.error || 'Failed to send transaction';
         setSignedDeploys(prev => new Map(prev).set(deployKey, {
           isLoading: false,
           isSigned: false,
-          error: result.error || 'Failed to sign transaction',
+          error: errorMsg,
+          deployHash: result.deployHash, // May have deploy hash even on failure
         }));
 
         setSigningStatus({
           isActive: true,
-          message: result.error || 'Failed to sign transaction',
+          message: errorMsg,
           type: 'error',
         });
       }
@@ -456,7 +440,7 @@ export default function ChatPage() {
 
     // Clear status after a delay
     setTimeout(() => setSigningStatus({ isActive: false }), 5000);
-  }, [signDeploy, network, conversationId]);
+  }, [sendTransaction, network, conversationId]);
 
   // Handler for cancelling deploys
   const handleCancelDeploy = React.useCallback(async (unsignedDeploy: UnsignedDeployData) => {
