@@ -1,0 +1,272 @@
+---
+title: Frequently Asked Questions
+description: Common questions about CSPR.AI and the Casper Network MCP integration
+---
+
+import { Callout } from 'nextra/components'
+
+# Frequently Asked Questions
+
+Find answers to the most common questions about CSPR.AI.
+
+---
+
+## General
+
+<details>
+<summary>**What is CSPR.AI?**</summary>
+
+CSPR.AI is the first AI-powered MCP (Model Context Protocol) integration for the Casper Network. It enables natural language interaction with the blockchain through AI assistants like Claude, allowing you to query balances, build transactions, manage tokens, and more—all through conversational AI.
+
+</details>
+
+<details>
+<summary>**What is the Model Context Protocol (MCP)?**</summary>
+
+MCP is an open protocol developed by Anthropic that allows AI models to securely connect to external tools and data sources. CSPR.AI implements MCP to give AI assistants direct access to Casper Network functionality, enabling seamless blockchain interactions through natural language.
+
+</details>
+
+<details>
+<summary>**Is CSPR.AI free to use?**</summary>
+
+The MCP server itself is open source and free to run. However:
+- **Read operations** (balance queries, validator info) are always free
+- **Write operations** (transfers, staking) require CSPR for network gas fees
+- **AI usage** depends on your AI provider (Anthropic, OpenAI) subscription
+
+</details>
+
+<details>
+<summary>**Which AI providers are supported?**</summary>
+
+Currently supported:
+- **Anthropic Claude** (Claude 3.5 Sonnet, Claude 3 Opus)
+- **OpenAI** (GPT-4, GPT-4 Turbo)
+
+The MCP protocol is provider-agnostic, so additional models can be integrated.
+
+</details>
+
+---
+
+## Security
+
+<details>
+<summary>**Are my private keys safe?**</summary>
+
+**Yes, absolutely.** CSPR.AI never handles or stores private keys. Here's how it works:
+
+1. **Read operations**: No keys needed—anyone can query public blockchain data
+2. **Write operations**: MCP tools build *unsigned* transactions
+3. **Signing**: You sign transactions in your own wallet (CSPR.click browser extension)
+4. **Submission**: Signed transactions are submitted to the network
+
+Your private keys never leave your wallet.
+
+</details>
+
+<details>
+<summary>**Can the AI access my wallet?**</summary>
+
+No. The AI can only:
+- Query public blockchain data
+- Build unsigned transaction payloads
+- Check transaction status
+
+Actual signing and submission requires your explicit action in the CSPR.click wallet extension.
+
+</details>
+
+<details>
+<summary>**Is the code audited?**</summary>
+
+The smart contracts follow Casper's CEP standards (CEP-18, CEP-78) and use the battle-tested Odra framework. While formal audits are on our roadmap, all code is open source for community review at [github.com/cspr-ai](https://github.com/cspr-ai).
+
+</details>
+
+---
+
+## Setup & Configuration
+
+<details>
+<summary>**What are the system requirements?**</summary>
+
+- **Node.js**: v20 or higher
+- **Package Manager**: pnpm, npm, or yarn
+- **For Claude Desktop**: macOS, Windows, or Linux
+- **For Web Dashboard**: Modern browser with CSPR.click extension
+
+</details>
+
+<details>
+<summary>**How do I switch between testnet and mainnet?**</summary>
+
+Set the `CASPER_NETWORK` environment variable:
+
+```bash
+# Testnet (default)
+CASPER_NETWORK=testnet
+
+# Mainnet
+CASPER_NETWORK=mainnet
+```
+
+<Callout type="warning">
+Always test on testnet first before using mainnet with real funds.
+</Callout>
+
+</details>
+
+<details>
+<summary>**Why is my transaction failing?**</summary>
+
+Common causes:
+1. **Insufficient balance**: Ensure you have enough CSPR for the transaction + gas
+2. **Invalid address**: Check the public key format (01... for Ed25519, 02... for Secp256k1)
+3. **Network mismatch**: Ensure wallet and MCP server are on the same network
+4. **Minimum stake**: Delegations require minimum 500 CSPR
+
+Use `casper_get_deploy_status` with the deploy hash to see detailed error messages.
+
+</details>
+
+---
+
+## MCP Tools
+
+<details>
+<summary>**How many tools are available?**</summary>
+
+CSPR.AI provides **50+ MCP tools** across categories:
+- **Account**: Balance, history, transfers
+- **Validator**: Staking, rewards, delegation
+- **Transaction**: Build, sign, status
+- **Token (CEP-18)**: Transfer, mint, burn
+- **NFT**: Mint, transfer, metadata
+- **DAO**: Proposals, voting, execution
+- **DEX**: Pools, swaps, liquidity
+
+</details>
+
+<details>
+<summary>**Can I use MCP tools programmatically?**</summary>
+
+Yes! The MCP server supports two transports:
+
+1. **Stdio**: For Claude Desktop and CLI tools
+2. **HTTP**: For web applications and custom integrations
+
+See the [API Reference](/api-reference) for details.
+
+</details>
+
+<details>
+<summary>**What's the difference between `build` and `sign` tools?**</summary>
+
+- **Build tools** (`casper_build_*`): Create unsigned transaction payloads—safe, no keys needed
+- **Sign tool** (`casper_sign_and_submit_transaction`): Signs with server-side key (only for trusted environments)
+
+For most users, use build tools + CSPR.click wallet for signing.
+
+</details>
+
+---
+
+## Smart Contracts
+
+<details>
+<summary>**Are the contracts deployed on mainnet?**</summary>
+
+Currently, all contracts are deployed on **Casper Testnet** for development and testing. Mainnet deployment is planned after thorough testing and community feedback.
+
+</details>
+
+<details>
+<summary>**Can I deploy my own contracts?**</summary>
+
+Yes! The contract source code is in the `contracts/` directory. Build with:
+
+```bash
+cd contracts
+cargo odra build
+```
+
+Then use the Casper SDK or tools to deploy the compiled WASM.
+
+</details>
+
+<details>
+<summary>**What standards do the contracts follow?**</summary>
+
+- **Token**: CEP-18 (Fungible Token Standard)
+- **NFT**: CEP-78 (Enhanced NFT Standard)
+- **DAO/DEX**: Custom implementations using Odra framework
+
+All contracts use Odra's `Ownable` module for access control.
+
+</details>
+
+---
+
+## Troubleshooting
+
+<details>
+<summary>**"Account not found" error**</summary>
+
+This means the account hasn't been activated on the network yet. On Casper, accounts must receive at least one transaction to be created. Fund the account with testnet CSPR from the [faucet](https://testnet.cspr.live/tools/faucet).
+
+</details>
+
+<details>
+<summary>**MCP server not connecting**</summary>
+
+1. Check the server is running (`pnpm dev` or `pnpm start`)
+2. Verify the correct transport (stdio vs HTTP)
+3. For Claude Desktop, check `claude_desktop_config.json` path
+4. Check firewall isn't blocking the port (default: 3001)
+
+</details>
+
+<details>
+<summary>**Transaction stuck in pending**</summary>
+
+Casper transactions typically confirm within 2-3 minutes. If stuck longer:
+1. Check network status at [cspr.live](https://cspr.live)
+2. Verify the deploy hash with `casper_get_deploy_status`
+3. The transaction may have expired (default TTL: 30 minutes)
+
+</details>
+
+---
+
+## Contributing
+
+<details>
+<summary>**How can I contribute?**</summary>
+
+We welcome contributions! Ways to help:
+- **Report bugs**: Open issues on GitHub
+- **Submit PRs**: Bug fixes, features, documentation
+- **Community SDKs**: Python, Rust, Go clients
+- **Testing**: Help test on testnet
+
+See our [GitHub repository](https://github.com/cspr-ai) for contribution guidelines.
+
+</details>
+
+<details>
+<summary>**Where can I get help?**</summary>
+
+- **Documentation**: You're here!
+- **GitHub Issues**: For bugs and feature requests
+- **Casper Discord**: Community support
+- **Twitter/X**: [@cspr_ai](https://twitter.com/cspr_ai) for updates
+
+</details>
+
+---
+
+<Callout>
+Still have questions? Open an issue on [GitHub](https://github.com/cspr-ai) or join the community discussion.
+</Callout>
