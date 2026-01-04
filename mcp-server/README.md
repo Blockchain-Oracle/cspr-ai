@@ -8,6 +8,7 @@ CSPR.AI is live and ready to use:
 
 | Service | URL |
 |---------|-----|
+| **Documentation** | https://docs.cspr-ai.xyz |
 | **Web Dashboard** | https://cspr-ai.xyz |
 | **MCP API** | https://mcp.cspr-ai.xyz/mcp |
 | **Health Check** | https://mcp.cspr-ai.xyz/health |
@@ -32,6 +33,7 @@ CSPR.AI is live and ready to use:
 
 | Service | URL |
 |---------|-----|
+| **Documentation** | https://docs.cspr-ai.xyz |
 | **Web Dashboard** | https://cspr-ai.xyz |
 | **MCP API** | https://mcp.cspr-ai.xyz/mcp |
 | **Health Check** | https://mcp.cspr-ai.xyz/health |

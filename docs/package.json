@@ -5,10 +5,10 @@
   "license": "MIT",
   "private": true,
   "scripts": {
-    "dev": "next --turbopack",
+    "dev": "next --turbopack -p 3002",
     "build": "next build",
     "postbuild": "pagefind --site .next/server/app --output-path public/_pagefind",
-    "start": "next start"
+    "start": "next start -p 3002"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
