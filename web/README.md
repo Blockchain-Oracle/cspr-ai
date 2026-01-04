@@ -1,6 +1,14 @@
-# CSPR.AI Web Dashboard
+<p align="center">
+  <img src="../assets/logo.svg" alt="CSPR.AI Logo" width="80" height="80" />
+</p>
 
-AI-powered web interface for interacting with the Casper blockchain through natural language. Built with Next.js 16, the CSPR.AI dashboard provides a conversational interface to the Model Context Protocol (MCP) server, enabling users to query blockchain state, build transactions, and interact with smart contracts using AI assistance.
+<h1 align="center">CSPR.AI Web Dashboard</h1>
+
+<p align="center">
+  AI-powered web interface for interacting with the Casper blockchain through natural language.
+</p>
+
+Built with Next.js 16, the CSPR.AI dashboard provides a conversational interface to the Model Context Protocol (MCP) server, enabling users to query blockchain state, build transactions, and interact with smart contracts using AI assistance.
 
 ## Table of Contents
 

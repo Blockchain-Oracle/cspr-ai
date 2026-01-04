@@ -1,6 +1,24 @@
-# CSPR.AI
+<p align="center">
+  <img src="./assets/logo.svg" alt="CSPR.AI Logo" width="120" height="120" />
+</p>
 
-AI-powered Model Context Protocol (MCP) server for Casper Network blockchain integration. Enables natural language interaction with Casper blockchain through Claude, Cursor, and other MCP-compatible AI assistants.
+<h1 align="center">CSPR.AI</h1>
+
+<p align="center">
+  <strong>AI-powered Model Context Protocol (MCP) server for Casper Network</strong>
+</p>
+
+<p align="center">
+  <a href="https://cspr-ai.xyz">Web Dashboard</a> •
+  <a href="https://docs.cspr-ai.xyz">Documentation</a> •
+  <a href="https://mcp.cspr-ai.xyz/mcp">MCP API</a>
+</p>
+
+<p align="center">
+  <img src="./assets/cspr-hero.png" alt="CSPR.AI Banner" width="100%" />
+</p>
+
+Enables natural language interaction with Casper blockchain through Claude, Cursor, and other MCP-compatible AI assistants.
 
 ## Live Deployment
 

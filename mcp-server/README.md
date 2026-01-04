@@ -1,6 +1,13 @@
-# CSPR.AI MCP Server
+<p align="center">
+  <img src="../assets/logo.svg" alt="CSPR.AI Logo" width="80" height="80" />
+</p>
 
-Model Context Protocol (MCP) server for Casper Network blockchain integration. Provides 50+ tools for AI assistants to interact with Casper blockchain through natural language.
+<h1 align="center">CSPR.AI MCP Server</h1>
+
+<p align="center">
+  Model Context Protocol (MCP) server for Casper Network blockchain integration.<br/>
+  Provides 50+ tools for AI assistants to interact with Casper blockchain through natural language.
+</p>
 
 ## Live Deployment
 
@@ -26,17 +33,6 @@ CSPR.AI is live and ready to use:
 - [Testing](#testing)
 - [Docker Deployment](#docker-deployment)
 - [API Reference](#api-reference)
-
-## Live Deployment
-
-CSPR.AI is live and ready to use:
-
-| Service | URL |
-|---------|-----|
-| **Documentation** | https://docs.cspr-ai.xyz |
-| **Web Dashboard** | https://cspr-ai.xyz |
-| **MCP API** | https://mcp.cspr-ai.xyz/mcp |
-| **Health Check** | https://mcp.cspr-ai.xyz/health |
 
 ## Overview
 

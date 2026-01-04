@@ -1,6 +1,12 @@
-# CSPR.AI Smart Contracts
+<p align="center">
+  <img src="../assets/logo.svg" alt="CSPR.AI Logo" width="80" height="80" />
+</p>
 
-Smart contracts for the CSPR.AI platform built with the [Odra Framework](https://odra.dev) for Casper Network.
+<h1 align="center">CSPR.AI Smart Contracts</h1>
+
+<p align="center">
+  Smart contracts for the CSPR.AI platform built with the <a href="https://odra.dev">Odra Framework</a> for Casper Network.
+</p>
 
 ## Architecture
 
