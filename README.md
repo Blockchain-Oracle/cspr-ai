@@ -39,6 +39,7 @@ CSPR.AI is live and ready to use:
 
 | Service | URL |
 |---------|-----|
+| **Documentation** | https://docs.cspr-ai.xyz |
 | **Web Dashboard** | https://cspr-ai.xyz |
 | **MCP API** | https://mcp.cspr-ai.xyz/mcp |
 | **Health Check** | https://mcp.cspr-ai.xyz/health |
@@ -761,7 +762,7 @@ MIT License - see LICENSE file for details
 
 ## Support
 
-- **Documentation**: https://docs.cspr.ai (coming soon)
+- **Documentation**: https://docs.cspr-ai.xyz
 - **Issues**: https://github.com/Blockchain-Oracle/cspr-ai/issues
 - **Casper Network**: https://casper.network
 - **CSPR.cloud**: https://cspr.cloud
