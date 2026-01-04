@@ -165,7 +165,9 @@ export default function AboutPage() {
               Start Chatting
             </a>
             <a
-              href="/docs"
+              href="https://docs.cspr-ai.xyz"
+              target="_blank"
+              rel="noopener noreferrer"
               className="px-6 py-3 border border-border rounded-lg font-semibold hover:bg-accent transition-colors"
             >
               Read Docs

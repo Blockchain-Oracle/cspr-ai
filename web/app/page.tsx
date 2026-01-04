@@ -25,7 +25,7 @@ export default function Home() {
         primaryCTA="Start Chatting"
         onPrimaryCTA={handleStartChat}
         secondaryCTA="Read Docs"
-        onSecondaryCTA={() => router.push('/docs')}
+        onSecondaryCTA={() => window.open('https://docs.cspr-ai.xyz', '_blank')}
         tertiaryCTA="About Us"
         onTertiaryCTA={() => router.push('/about')}
       />

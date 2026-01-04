@@ -22,8 +22,5 @@ export default {
   },
   faq: {
     title: 'FAQ'
-  },
-  roadmap: {
-    title: 'Roadmap'
   }
 }

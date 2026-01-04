@@ -80,7 +80,7 @@ export function Header({
     { label: 'Features', href: '/#features' },
     { label: 'Use Cases', href: '/#use-cases' },
     { label: 'Chat', href: '/chat' },
-    { label: 'Docs', href: '/docs' },
+    { label: 'Docs', href: 'https://docs.cspr-ai.xyz', external: true },
     { label: 'About', href: '/about' },
   ];
 
@@ -103,6 +103,8 @@ export function Header({
                  <Link
                    key={link.href}
                    href={link.href}
+                   target={link.external ? "_blank" : undefined}
+                   rel={link.external ? "noopener noreferrer" : undefined}
                    className="text-muted-foreground transition-colors hover:text-primary"
                  >
                    {link.label}

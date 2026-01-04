@@ -18,7 +18,7 @@ export interface MobileMenuProps {
   onClose: () => void;
   theme?: 'light' | 'dark';
   onThemeToggle?: () => void;
-  navLinks?: { label: string; href: string }[];
+  navLinks?: { label: string; href: string; external?: boolean }[];
   // Wallet props
   isConnected?: boolean;
   activeAccount?: { publicKey: string } | null;
@@ -82,6 +82,8 @@ export function MobileMenu({
                 key={link.href}
                 href={link.href}
                 onClick={onClose}
+                target={link.external ? "_blank" : undefined}
+                rel={link.external ? "noopener noreferrer" : undefined}
                 className="block px-4 py-3 rounded-xl text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
               >
                 {link.label}

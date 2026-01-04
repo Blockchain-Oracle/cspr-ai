@@ -33,7 +33,7 @@ export function Footer({ links, socialLinks }: FooterProps) {
       { label: 'Use Cases', href: '/#use-cases' },
     ],
     resources: [
-      { label: 'Documentation', href: '/docs' },
+      { label: 'Documentation', href: 'https://docs.cspr-ai.xyz', external: true },
       { label: 'Casper Network', href: 'https://casper.network', external: true },
       { label: 'Community', href: 'https://discord.com/invite/casperblockchain', external: true },
     ],
