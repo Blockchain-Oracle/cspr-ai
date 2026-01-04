@@ -206,16 +206,29 @@ export class CasperClient {
 
   /**
    * Submit a signed transaction to the network
-   * @param transaction - The signed Transaction object (wrapper containing Deploy for 1.5 or TransactionV1 for 2.0)
+   * @param transaction - The signed Transaction/Deploy object
+   *   - Deploy object (from makeAuctionManagerDeploy, NativeTransferBuilder.buildFor1_5, etc.)
+   *   - Transaction wrapper (from builders that wrap Deploy)
    * @returns The transaction hash
    */
   async submitTransaction(transaction: any): Promise<string> {
     try {
-      // For Casper 1.5 networks, extract the Deploy from the Transaction wrapper
-      // and use putDeploy() instead of putTransaction()
-      const deploy = transaction.getDeploy();
+      // Check if this is a pure Deploy object (from makeAuctionManagerDeploy, etc.)
+      // Deploy objects have: header, payment, session, hash, approvals
+      const isPureDeploy = transaction.header && transaction.payment && transaction.session && !transaction.getDeploy;
+
+      let deploy: any;
+
+      if (isPureDeploy) {
+        // This is already a Deploy object - use it directly
+        deploy = transaction;
+      } else if (typeof transaction.getDeploy === 'function') {
+        // For Casper 1.5 networks, extract the Deploy from the Transaction wrapper
+        deploy = transaction.getDeploy();
+      }
+
       if (deploy) {
-        // Casper 1.5 network - submit Deploy
+        // Casper 1.5 network - submit Deploy using putDeploy
         const result = await this.rpcClient.putDeploy(deploy);
         // putDeploy returns { deployHash: Hash }
         const hash = result.deployHash;

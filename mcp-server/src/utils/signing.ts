@@ -21,6 +21,9 @@ const {
   Transaction,
   KeyAlgorithm,
   CLValue,
+  makeAuctionManagerDeploy,
+  AuctionManagerEntryPoint,
+  CasperNetworkName,
 } = casperSdk;
 
 // Type for private key and transaction from SDK
@@ -279,8 +282,45 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
       }
 
     } else if (transactionJson.session.stored_contract_by_hash) {
-      // Contract call (including delegation to auction contract)
       const contractCall = transactionJson.session.stored_contract_by_hash;
+
+      // Check if this is a delegation to the auction contract - use SDK's dedicated function
+      const isAuctionContract = contractCall.hash.toLowerCase() === AUCTION_CONTRACT_HASH.toLowerCase();
+      const isDelegateEntryPoint = contractCall.entry_point === 'delegate';
+
+      if (isAuctionContract && isDelegateEntryPoint) {
+        // Use makeAuctionManagerDeploy for delegation - this is the SDK's official way
+        const delegatorArg = contractCall.args.find(([key]) => key === 'delegator');
+        const validatorArg = contractCall.args.find(([key]) => key === 'validator');
+        const amountArg = contractCall.args.find(([key]) => key === 'amount');
+
+        if (!delegatorArg || !validatorArg || !amountArg) {
+          throw new Error('Delegation requires delegator, validator, and amount arguments');
+        }
+
+        const delegatorHex = delegatorArg[1].parsed as string;
+        const validatorHex = validatorArg[1].parsed as string;
+        const amountMotes = amountArg[1].parsed as string;
+
+        // Use SDK's makeAuctionManagerDeploy - creates proper Deploy object
+        // Cast chainName to CasperNetworkName (SDK expects this enum type)
+        const networkName = chainName as typeof CasperNetworkName.Testnet;
+        const deploy = makeAuctionManagerDeploy({
+          delegatorPublicKeyHex: delegatorHex,
+          validatorPublicKeyHex: validatorHex,
+          contractEntryPoint: AuctionManagerEntryPoint.delegate,
+          amount: amountMotes,
+          paymentAmount: String(paymentAmount),
+          chainName: networkName,
+          ttl: parseTtlToMilliseconds(transactionJson.header.ttl),
+          contractHash: AUCTION_CONTRACT_HASH,
+          gasPrice: transactionJson.header.gas_price || 1
+        });
+
+        return deploy as unknown as TransactionType;
+      }
+
+      // Regular contract call (not delegation)
       const argsMap: Record<string, unknown> = {};
 
       // Convert args array to map with proper CLValue construction
@@ -429,14 +469,13 @@ export function signTransaction(
 /**
  * Convert a signed transaction to JSON for submission
  *
- * @param signedTransaction - The signed transaction
+ * @param signedTransaction - The signed transaction (can be Deploy or Transaction)
  * @returns The transaction hash and JSON representation
  */
 export function transactionToJson(
   signedTransaction: TransactionType
 ): SignedTransactionResult {
-  // Get transaction hash - the hash object should have a toHex method or similar
-  // If not, we convert from the raw bytes
+  // Get transaction hash - the hash object should have toHex or toJSON method
   const hash = signedTransaction.hash;
   let transactionHash: string;
   if (typeof (hash as { toHex?: () => string }).toHex === 'function') {
@@ -451,9 +490,22 @@ export function transactionToJson(
       .join('');
   }
 
-  // Use instance toJSON method for serialization
-  // Transaction objects (from buildFor1_5) have their own toJSON instance method
-  const transactionJson = (signedTransaction as unknown as { toJSON: () => unknown }).toJSON();
+  // Serialize to JSON - handle both Deploy and Transaction objects
+  // Deploy uses static Deploy.toJSON(deploy), Transaction uses instance method
+  let transactionJson: unknown;
+
+  // Check if this is a Deploy object (from makeAuctionManagerDeploy)
+  // Deploy objects have approvals, hash, header, payment, session properties
+  const asDeploy = signedTransaction as unknown as { header?: { account?: unknown }; payment?: unknown; session?: unknown };
+  if (asDeploy.header && asDeploy.payment && asDeploy.session) {
+    // This is a Deploy object - use Deploy.toJSON static method
+    transactionJson = Deploy.toJSON(signedTransaction as unknown as InstanceType<typeof Deploy>);
+  } else if (typeof (signedTransaction as unknown as { toJSON?: () => unknown }).toJSON === 'function') {
+    // This is a Transaction object with instance toJSON method
+    transactionJson = (signedTransaction as unknown as { toJSON: () => unknown }).toJSON();
+  } else {
+    throw new Error('Unable to serialize transaction: no toJSON method available');
+  }
 
   return {
     transaction_hash: transactionHash,
