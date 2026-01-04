@@ -19,17 +19,11 @@ const {
   Key,
   CLValue,
   Deploy,
-  makeAuctionManagerDeploy,
-  AuctionManagerEntryPoint,
-  CasperNetworkName,
 } = casperSdk;
 
 // Auction contract hash (for delegation transactions)
 // This is the system auction contract on both testnet and mainnet
 const AUCTION_CONTRACT_HASH = "93d923e336b20a4c4ca14d592b60e5bd3fe330775618290104f9beb326db7ae2";
-
-// Payment amounts in motes (1 CSPR = 1,000,000,000 motes)
-const DELEGATION_PAYMENT_MOTES = 2_500_000_000; // 2.5 CSPR for delegation
 
 /**
  * SDK-produced transaction JSON structure (from MCP tools)
@@ -320,48 +314,18 @@ function reconstructTransaction(transactionJson: SdkTransactionJson): any {
       // Contract call
       const contractCall = storedContractByHash as any;
 
-      // Check if this is a delegation to the auction contract - use SDK's dedicated function
+      // Check if this is a delegation to the auction contract
       const isAuctionContract = contractCall.hash.toLowerCase() === AUCTION_CONTRACT_HASH.toLowerCase();
       const isDelegateEntryPoint = contractCall.entry_point === 'delegate';
 
+      // Log delegation details for debugging
       if (isAuctionContract && isDelegateEntryPoint) {
-        // Use makeAuctionManagerDeploy for delegation - this is the SDK's official way
-        const delegatorArg = contractCall.args.find(([key]: [string, any]) => key === 'delegator');
-        const validatorArg = contractCall.args.find(([key]: [string, any]) => key === 'validator');
-        const amountArg = contractCall.args.find(([key]: [string, any]) => key === 'amount');
-
-        if (!delegatorArg || !validatorArg || !amountArg) {
-          throw new Error('Delegation requires delegator, validator, and amount arguments');
-        }
-
-        const delegatorHex = delegatorArg[1].parsed as string;
-        const validatorHex = validatorArg[1].parsed as string;
-        const amountMotes = amountArg[1].parsed as string;
-
-        console.log('[transaction-utils] Building delegation with makeAuctionManagerDeploy');
-        console.log('[transaction-utils] Delegator:', delegatorHex);
-        console.log('[transaction-utils] Validator:', validatorHex);
-        console.log('[transaction-utils] Amount:', amountMotes, 'motes');
-        console.log('[transaction-utils] Payment:', DELEGATION_PAYMENT_MOTES, 'motes (2.5 CSPR)');
-
-        // Use SDK's makeAuctionManagerDeploy - creates proper Deploy object
-        const networkName = chainName as typeof CasperNetworkName.Testnet;
-        const deploy = makeAuctionManagerDeploy({
-          delegatorPublicKeyHex: delegatorHex,
-          validatorPublicKeyHex: validatorHex,
-          contractEntryPoint: AuctionManagerEntryPoint.delegate,
-          amount: amountMotes,
-          paymentAmount: String(DELEGATION_PAYMENT_MOTES),
-          chainName: networkName,
-          ttl: parseTtlToMilliseconds(transactionJson.header.ttl),
-          contractHash: AUCTION_CONTRACT_HASH,
-          gasPrice: transactionJson.header.gas_price || 1
-        });
-
-        return deploy;
+        console.log('[transaction-utils] Detected delegation transaction');
+        console.log('[transaction-utils] Sender from header:', transactionJson.header.account);
+        console.log('[transaction-utils] Building delegation with ContractCallBuilder (using senderKey from header)');
       }
 
-      // Regular contract call (not delegation)
+      // Build contract call args (works for both delegation and regular contracts)
       const argsMap: Record<string, unknown> = {};
 
       // Convert args to proper CLValues
@@ -411,15 +375,25 @@ function reconstructTransaction(transactionJson: SdkTransactionJson): any {
         }
       }
 
-      // CRITICAL: Always use byPackageHash() for Casper 1.5 network
-      // byPackageHash() produces StoredVersionedContractByHash which is required
-      // byHash() produces StoredContractByHash which causes "Invalid Deploy" errors
+      // Determine which method to use based on contract type:
+      // - System contracts (auction): Use byHash() -> StoredContractByHash
+      // - User contracts (CEP-18, NFT, DAO, DEX): Use byPackageHash() -> StoredVersionedContractByHash
       console.log(`[reconstructTransaction] Building contract call with payment: ${paymentAmount} motes (${paymentAmount / 1_000_000_000} CSPR)`);
       console.log(`[reconstructTransaction] Contract hash: ${contractCall.hash}`);
       console.log(`[reconstructTransaction] Entry point: ${contractCall.entry_point}`);
+      console.log(`[reconstructTransaction] Is auction contract: ${isAuctionContract}`);
 
       builder = new ContractCallBuilder();
-      builder = builder.byPackageHash(contractCall.hash, null as unknown as number | undefined);
+
+      if (isAuctionContract) {
+        // Auction is a SYSTEM CONTRACT - use byHash() for StoredContractByHash
+        console.log('[reconstructTransaction] Using byHash() for system auction contract');
+        builder = builder.byHash(contractCall.hash);
+      } else {
+        // User contracts - use byPackageHash() for StoredVersionedContractByHash
+        console.log('[reconstructTransaction] Using byPackageHash() for user contract');
+        builder = builder.byPackageHash(contractCall.hash, null as unknown as number | undefined);
+      }
 
       builder = builder
         .from(senderKey)
@@ -432,49 +406,9 @@ function reconstructTransaction(transactionJson: SdkTransactionJson): any {
       console.log('[reconstructTransaction] ContractCallBuilder configured with payment');
 
     } else if (storedContractByName) {
-      // Handle stored_contract_by_name - mainly used for delegation to auction contract
+      // stored_contract_by_name is not used by MCP server
+      // All contract calls use stored_contract_by_hash instead
       const contractCall = storedContractByName as any;
-      const isAuctionContract = contractCall.name === 'auction';
-      const isDelegateEntryPoint = contractCall.entry_point === 'delegate';
-
-      if (isAuctionContract && isDelegateEntryPoint) {
-        // Use makeAuctionManagerDeploy for delegation - this is the SDK's official way
-        const delegatorArg = contractCall.args.find(([key]: [string, any]) => key === 'delegator');
-        const validatorArg = contractCall.args.find(([key]: [string, any]) => key === 'validator');
-        const amountArg = contractCall.args.find(([key]: [string, any]) => key === 'amount');
-
-        if (!delegatorArg || !validatorArg || !amountArg) {
-          throw new Error('Delegation requires delegator, validator, and amount arguments');
-        }
-
-        const delegatorHex = delegatorArg[1].parsed as string;
-        const validatorHex = validatorArg[1].parsed as string;
-        const amountMotes = amountArg[1].parsed as string;
-
-        console.log('[transaction-utils] Building delegation (by name) with makeAuctionManagerDeploy');
-        console.log('[transaction-utils] Delegator:', delegatorHex);
-        console.log('[transaction-utils] Validator:', validatorHex);
-        console.log('[transaction-utils] Amount:', amountMotes, 'motes');
-        console.log('[transaction-utils] Payment:', DELEGATION_PAYMENT_MOTES, 'motes (2.5 CSPR)');
-
-        // Use SDK's makeAuctionManagerDeploy - creates proper Deploy object
-        const networkName = chainName as typeof CasperNetworkName.Testnet;
-        const deploy = makeAuctionManagerDeploy({
-          delegatorPublicKeyHex: delegatorHex,
-          validatorPublicKeyHex: validatorHex,
-          contractEntryPoint: AuctionManagerEntryPoint.delegate,
-          amount: amountMotes,
-          paymentAmount: String(DELEGATION_PAYMENT_MOTES),
-          chainName: networkName,
-          ttl: parseTtlToMilliseconds(transactionJson.header.ttl),
-          contractHash: AUCTION_CONTRACT_HASH,
-          gasPrice: transactionJson.header.gas_price || 1
-        });
-
-        return deploy;
-      }
-
-      // Other stored_contract_by_name calls - not yet supported
       throw new Error(`stored_contract_by_name for ${contractCall.name}/${contractCall.entry_point} is not supported. Use stored_contract_by_hash instead.`);
 
     } else if (moduleBytes) {
