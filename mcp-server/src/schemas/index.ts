@@ -89,8 +89,8 @@ export const TransferCsprInputSchema = z.object({
   from_public_key: PublicKeySchema.describe("Sender's public key"),
   to_public_key: PublicKeySchema.describe("Recipient's public key"),
   amount_cspr: z.number()
-    .positive("Amount must be positive")
-    .describe("Amount to transfer in CSPR (e.g., 100.5)")
+    .min(10, "Minimum transfer amount is 10 CSPR")
+    .describe("Amount to transfer in CSPR (minimum 10)")
 }).strict();
 
 /**
