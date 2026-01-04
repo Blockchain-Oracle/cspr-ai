@@ -13,6 +13,9 @@ interface BridgeMessage {
   requestId?: string;
 }
 
+// Get CSPR.click app ID from environment
+const CSPRCLICK_APP_ID = process.env.NEXT_PUBLIC_CSPRCLICK_APP_ID || 'csprclick-template';
+
 /**
  * WalletProvider component
  * Uses an iframe to isolate CSPR.click SDK (React 18) from React 19 app
@@ -231,7 +234,7 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
       {/* Iframe for CSPR.click SDK isolation - visible during connection or signing */}
       <iframe
         ref={iframeRef}
-        src="/wallet-bridge.html"
+        src={`/wallet-bridge.html?appId=${encodeURIComponent(CSPRCLICK_APP_ID)}`}
         style={{
           position: 'fixed',
           top: 0,

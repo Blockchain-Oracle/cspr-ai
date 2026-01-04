@@ -37,10 +37,14 @@
       themeMode: 'dark'
     };
 
-    // SDK configuration - using csprclick-template for local development
+    // SDK configuration - reads appId from URL params (set by parent app from env vars)
+    // Fallback to csprclick-template for local development
+    const urlParams = new URLSearchParams(window.location.search);
+    const appId = urlParams.get('appId') || 'csprclick-template';
+
     window.clickSDKOptions = {
       appName: 'CSPR.AI',
-      appId: 'csprclick-template',
+      appId: appId,
       contentMode: 'iframe',
       providers: ['casper-wallet', 'ledger', 'metamask-snap', 'casperdash']
     };
