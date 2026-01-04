@@ -24,6 +24,15 @@ AI-powered Model Context Protocol (MCP) server for Casper Network blockchain int
 - [Contributing](#contributing)
 - [License](#license)
 
+## Live Deployment
+
+The MCP server is live and ready to use:
+
+| Endpoint | URL |
+|----------|-----|
+| **MCP API** | https://mcp.cspr-ai.xyz/mcp |
+| **Health Check** | https://mcp.cspr-ai.xyz/health |
+
 ## Overview
 
 CSPR.AI provides a bridge between AI assistants and the Casper Network blockchain through the Model Context Protocol. It enables developers and users to interact with Casper blockchain using natural language, making blockchain operations accessible through conversational interfaces.

@@ -2,6 +2,15 @@
 
 Model Context Protocol (MCP) server for Casper Network blockchain integration. Provides 50+ tools for AI assistants to interact with Casper blockchain through natural language.
 
+## Live Deployment
+
+The MCP server is live and ready to use:
+
+| Endpoint | URL |
+|----------|-----|
+| **MCP API** | https://mcp.cspr-ai.xyz/mcp |
+| **Health Check** | https://mcp.cspr-ai.xyz/health |
+
 ## Table of Contents
 
 - [Overview](#overview)
