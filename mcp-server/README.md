@@ -1,8 +1,6 @@
-<p align="center">
-  <img src="../assets/logo.svg" alt="CSPR.AI" width="200" />
-</p>
-
-<h1 align="center">MCP Server</h1>
+<h1 align="center">
+  <img src="../assets/logo.svg" alt="CSPR.AI" height="32" /> MCP Server
+</h1>
 
 <p align="center">
   Model Context Protocol (MCP) server for Casper Network blockchain integration.<br/>
