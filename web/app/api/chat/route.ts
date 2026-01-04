@@ -57,8 +57,16 @@ export async function POST(req: Request) {
 
     try {
       // Get all tools from MCP server
-      const tools = await mcpClient.tools();
-      console.log('[Chat API] Got', Object.keys(tools).length, 'tools from MCP');
+      const allTools = await mcpClient.tools();
+
+      // Filter out tools with schemas incompatible with OpenAI
+      // casper_sign_and_submit_transaction has tuple types in its schema that OpenAI rejects
+      // This tool is not needed in frontend anyway - signing is done via CSPR.click wallet
+      const toolsToExclude = ['casper_sign_and_submit_transaction', 'casper_wallet_status'];
+      const tools = Object.fromEntries(
+        Object.entries(allTools).filter(([name]) => !toolsToExclude.includes(name))
+      );
+      console.log('[Chat API] Got', Object.keys(tools).length, 'tools from MCP (excluded:', toolsToExclude.join(', '), ')');
 
       // Stream AI response with MCP tools
       const result = streamText({

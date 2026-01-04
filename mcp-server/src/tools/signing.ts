@@ -29,17 +29,39 @@ import { CasperClient } from "../services/casper-client.js";
 // ============ Schemas ============
 
 /**
- * Schema for casper_sign_and_submit_transaction
+ * Schema for SDK-produced transaction JSON
+ * Accepts the format output by Transaction.toJSON() with PascalCase keys
+ * Supports all transaction types: Transfer, StoredContractByHash, ModuleBytes
  *
- * IMPORTANT: We use a minimal schema because:
- * 1. Casper SDK produces complex nested structures with tuple types for CLValue args
- * 2. JSON Schema tuple types cause validation errors with OpenAI/Claude APIs
- * 3. The actual validation happens at runtime when reconstructing the Transaction
- *
- * The unsigned_deploy object is validated when we call reconstructTransaction()
+ * NOTE: We use a permissive schema here because:
+ * 1. The casper-js-sdk produces complex nested structures with tuples
+ * 2. JSON Schema doesn't support tuple types well (causes MCP validation errors)
+ * 3. The actual validation happens when reconstructing the Transaction object
  */
 const SignTransactionInputSchema = z.object({
-  unsigned_deploy: z.any().describe("The unsigned transaction object from a build_* tool"),
+  unsigned_deploy: z.object({
+    // Transaction hash (computed by SDK) - OPTIONAL for simplified build tool output
+    hash: z.string().optional().describe("The transaction hash computed by SDK"),
+    // Header with standard fields
+    header: z.object({
+      account: z.string().describe("The sender's public key"),
+      body_hash: z.string().optional().describe("Hash of the transaction body"),
+      chain_name: z.string().describe("The network chain name"),
+      dependencies: z.array(z.string()).optional().describe("Transaction dependencies"),
+      gas_price: z.number().describe("Gas price multiplier"),
+      timestamp: z.string().optional().describe("ISO timestamp"),
+      ttl: z.string().describe("Time to live (e.g., '30m')"),
+    }),
+    // Payment - permissive to accept SDK output format
+    payment: z.record(z.unknown()).describe("Payment configuration (module_bytes with args)"),
+    // Session - permissive to accept all transaction types
+    session: z.record(z.unknown()).describe("Session configuration (transfer, stored_contract_by_hash, stored_contract_by_name, or module_bytes)"),
+    // Approvals array (empty for unsigned transactions) - OPTIONAL for simplified build tool output
+    approvals: z.array(z.object({
+      signer: z.string(),
+      signature: z.string(),
+    })).optional().describe("Signatures (empty for unsigned)"),
+  }).describe("The unsigned transaction object from a build_* tool"),
 });
 
 type SignTransactionInput = z.infer<typeof SignTransactionInputSchema>;
