@@ -8,7 +8,7 @@
 import {
   DEPLOY_TTL,
   GAS_PRICE,
-  TRANSFER_PAYMENT_BYTES
+  CONTRACT_PAYMENT_MOTES
 } from "../constants.js";
 import casperSdk from "casper-js-sdk";
 
@@ -19,7 +19,7 @@ const { PublicKey } = casperSdk;
 // ============================================================================
 
 /** Arguments for Casper contract calls */
-export type ContractArg = [string, { cl_type: string; parsed: unknown }];
+export type ContractArg = [string, { cl_type: string; parsed?: unknown; bytes?: string }];
 
 /** Header structure for unsigned deploys */
 interface DeployHeader {
@@ -111,12 +111,14 @@ function createDeployHeader(account: string, chainName: string): DeployHeader {
 }
 
 /**
- * Create standard payment structure
+ * Create standard payment structure for contract calls
+ * Uses numeric 'parsed' format for proper amount parsing
+ * Contract calls need 3 CSPR (3,000,000,000 motes) for gas
  */
 function createPayment(): DeployPayment {
   return {
     module_bytes: {
-      args: [["amount", { cl_type: "U512", parsed: TRANSFER_PAYMENT_BYTES }]]
+      args: [["amount", { cl_type: "U512", parsed: String(CONTRACT_PAYMENT_MOTES) }]]
     }
   };
 }
@@ -245,18 +247,18 @@ ${JSON.stringify(obj, null, 2)}
 
 /**
  * Get contract address from environment variable
- * Converts contract-package-xxx format to hash-xxx format
+ * Preserves contract-package- or hash- prefix for proper handling
  *
  * @param envVarName - Environment variable name (e.g., 'CASPER_TOKEN_CONTRACT_ADDRESS')
- * @returns Contract address in hash-xxx format, or null if not configured
+ * @returns Contract address with original prefix, or null if not configured
  */
 export function getContractFromEnv(envVarName: string): string | null {
   const address = process.env[envVarName];
   if (!address) return null;
 
-  // Convert contract-package-xxx to hash-xxx
+  // Preserve contract-package- prefix (used for byPackageHash calls)
   if (address.startsWith('contract-package-')) {
-    return address.replace('contract-package-', 'hash-');
+    return address;
   }
 
   // Already in hash-xxx format

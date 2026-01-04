@@ -44,7 +44,8 @@ import {
   validatePublicKey,
   truncateAddress,
   jsonCodeBlock,
-  getContractFromEnv
+  getContractFromEnv,
+  buildStoredContractDeploy
 } from "../../utils/contracts.js";
 import {
   proposalActionToCLValue,
@@ -447,17 +448,14 @@ export function registerBuildDaoProposeTool(server: McpServer, client: CasperCli
 
         const network = client.getChainName();
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "create_proposal",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "5000000000", // 5 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "create_proposal",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DaoProposeOutput = {
@@ -554,17 +552,14 @@ export function registerBuildDaoVoteTool(server: McpServer, client: CasperClient
 
         const network = client.getChainName();
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "vote",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "3000000000", // 3 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "vote",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DaoVoteTransactionOutput = {
@@ -655,17 +650,14 @@ export function registerBuildDaoExecuteTool(server: McpServer, client: CasperCli
 
         const network = client.getChainName();
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "execute",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "5000000000", // 5 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "execute",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DaoExecuteOutput = {

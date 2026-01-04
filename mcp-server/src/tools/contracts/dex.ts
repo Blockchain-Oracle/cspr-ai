@@ -48,7 +48,8 @@ import {
   validatePublicKey,
   truncateAddress,
   jsonCodeBlock,
-  getContractFromEnv
+  getContractFromEnv,
+  buildStoredContractDeploy
 } from "../../utils/contracts.js";
 
 // ============================================================================
@@ -419,17 +420,14 @@ export function registerBuildDexCreatePoolTool(server: McpServer, client: Casper
           ["token_b", { cl_type: "Key", parsed: token_b }]
         ];
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "create_pool",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "3000000000", // 3 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "create_pool",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DexCreatePoolOutput = {
@@ -525,17 +523,14 @@ export function registerBuildDexAddLiquidityTool(server: McpServer, client: Casp
           ["min_lp_tokens", { cl_type: "U256", parsed: min_lp_tokens }]
         ];
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "add_liquidity",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "5000000000", // 5 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "add_liquidity",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DexAddLiquidityOutput = {
@@ -635,17 +630,14 @@ export function registerBuildDexRemoveLiquidityTool(server: McpServer, client: C
           ["min_amount_b", { cl_type: "U256", parsed: min_amount_b }]
         ];
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "remove_liquidity",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "5000000000", // 5 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "remove_liquidity",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DexRemoveLiquidityOutput = {
@@ -745,17 +737,14 @@ export function registerBuildDexSwapTool(server: McpServer, client: CasperClient
           ["min_amount_out", { cl_type: "U256", parsed: min_amount_out }]
         ];
 
-        // Build unsigned deploy
-        const unsignedDeploy = {
-          deploy_type: "contract_call",
-          contract_address: contractAddress,
-          entry_point: "swap_exact_tokens_for_tokens",
-          args: contractArgs,
-          caller: from_public_key,
-          chain_name: network,
-          payment_amount: "3000000000", // 3 CSPR
-          gas_price: "1"
-        };
+        // Build unsigned deploy using standard format
+        const unsignedDeploy = buildStoredContractDeploy(
+          from_public_key,
+          network,
+          contractAddress,
+          "swap_exact_tokens_for_tokens",
+          contractArgs as import("../../utils/contracts.js").ContractArg[]
+        );
 
         // Create structured output
         const output: DexSwapOutput = {

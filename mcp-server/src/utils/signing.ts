@@ -92,6 +92,73 @@ function detectAlgorithmFromPem(pemContent: string): typeof KeyAlgorithm.ED25519
 }
 
 /**
+ * Decode a CLValue U512 from hex bytes
+ * Format: length prefix byte + little-endian value bytes
+ * Example: "0500e1f505" = 5 bytes, value 100000000 (0.1 CSPR in motes)
+ */
+function decodeU512Bytes(hexBytes: string): bigint {
+  // Remove any 0x prefix
+  const hex = hexBytes.startsWith('0x') ? hexBytes.slice(2) : hexBytes;
+
+  // First byte is length
+  const length = parseInt(hex.slice(0, 2), 16);
+
+  // Remaining bytes are little-endian value
+  const valueHex = hex.slice(2, 2 + length * 2);
+
+  // Convert from little-endian to big-endian
+  const bytes: string[] = [];
+  for (let i = 0; i < valueHex.length; i += 2) {
+    bytes.push(valueHex.slice(i, i + 2));
+  }
+  const bigEndianHex = bytes.reverse().join('');
+
+  return BigInt('0x' + bigEndianHex);
+}
+
+/**
+ * Parse payment amount from transaction JSON
+ * Handles both decimal strings and CLValue hex bytes
+ */
+function parsePaymentAmount(amountValue: { parsed?: unknown; bytes?: string }): number {
+  // Try bytes field first (CLValue format)
+  if (amountValue.bytes && typeof amountValue.bytes === 'string') {
+    try {
+      return Number(decodeU512Bytes(amountValue.bytes));
+    } catch {
+      // Fall through to parsed
+    }
+  }
+
+  // Try parsed field
+  if (amountValue.parsed !== undefined) {
+    const parsed = String(amountValue.parsed);
+
+    // Check if it looks like hex bytes (starts with length prefix pattern)
+    if (/^[0-9a-fA-F]+$/.test(parsed) && parsed.length >= 4) {
+      const firstByte = parseInt(parsed.slice(0, 2), 16);
+      // If first byte is a reasonable length (1-10 bytes for U512 payment)
+      if (firstByte >= 1 && firstByte <= 10 && parsed.length === 2 + firstByte * 2) {
+        try {
+          return Number(decodeU512Bytes(parsed));
+        } catch {
+          // Fall through to decimal parse
+        }
+      }
+    }
+
+    // Try as decimal string
+    const decimal = parseInt(parsed, 10);
+    if (!isNaN(decimal) && decimal > 0) {
+      return decimal;
+    }
+  }
+
+  // Default: 0.1 CSPR
+  return 100000000;
+}
+
+/**
  * Parse TTL string to milliseconds
  * Supports formats like "30m", "1h", "60s", "1800000ms" or raw number
  */
@@ -171,7 +238,7 @@ export function loadPrivateKey(secretKey: string): PrivateKeyType {
  */
 export function reconstructTransaction(transactionJson: SdkTransactionJson): TransactionType {
   try {
-    const { PublicKey, ContractCallBuilder, NativeTransferBuilder, NativeDelegateBuilder, Args } = casperSdk;
+    const { PublicKey, ContractCallBuilder, NativeTransferBuilder, NativeDelegateBuilder, Args, Key, CLValue } = casperSdk;
 
     const senderKey = PublicKey.fromHex(transactionJson.header.account);
     const chainName = transactionJson.header.chain_name;
@@ -183,8 +250,8 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
       const amountArg = transactionJson.payment.module_bytes.args.find(
         ([key]: [string, any]) => key === 'amount'
       );
-      if (amountArg && amountArg[1]?.parsed) {
-        paymentAmount = parseInt(amountArg[1].parsed as string, 10);
+      if (amountArg && amountArg[1]) {
+        paymentAmount = parsePaymentAmount(amountArg[1] as { parsed?: unknown; bytes?: string });
       }
     }
 
@@ -222,35 +289,32 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
 
         // Build proper CLValues based on type using SDK factory methods
         if (clType === "Key") {
-          // Key type - can be PublicKey (account) or Hash (contract)
+          // Key type - can be Account (from public key) or Hash (contract)
           const parsedStr = parsed as string;
 
           if (parsedStr.startsWith('hash-')) {
-            // Contract hash - manually construct Key with Hash variant
-            // Casper Key serialization: 1 byte variant tag + data
-            // Hash variant tag = 0x01, followed by 32-byte hash
-            const hashHex = parsedStr.replace('hash-', '');
-            const hashBytes = Buffer.from(hashHex, 'hex');
-
-            // Construct Key bytes: [0x01 (Hash tag), ...hash bytes]
-            const keyBytes = Buffer.concat([
-              Buffer.from([0x01]), // Hash variant tag
-              hashBytes
-            ]);
-
-            // Create ByteArray CLValue (Key is represented as ByteArray in runtime args)
-            argsMap[key] = CLValue.newCLByteArray(keyBytes);
+            // Contract hash - use Key.newKey with hash- prefix
+            const keyObj = Key.newKey(parsedStr);
+            argsMap[key] = CLValue.newCLKey(keyObj);
+          } else if (parsedStr.startsWith('account-hash-')) {
+            // Already an account hash string
+            const keyObj = Key.newKey(parsedStr);
+            argsMap[key] = CLValue.newCLKey(keyObj);
           } else {
-            // Public key (account)
+            // Public key - convert to account-hash format
             const publicKey = PublicKey.fromHex(parsedStr);
-            argsMap[key] = CLValue.newCLPublicKey(publicKey);
+            const accountHash = publicKey.accountHash();
+            const keyStr = accountHash.toPrefixedString();
+            const keyObj = Key.newKey(keyStr);
+            argsMap[key] = CLValue.newCLKey(keyObj);
           }
         } else if (clType === "U256") {
-          argsMap[key] = CLValue.newCLUInt256(parsed as string);
+          // Use BigInt for proper large number handling
+          argsMap[key] = CLValue.newCLUInt256(BigInt(parsed as string));
         } else if (clType === "U512") {
-          argsMap[key] = CLValue.newCLUInt512(parsed as string);
+          argsMap[key] = CLValue.newCLUInt512(BigInt(parsed as string));
         } else if (clType === "U128") {
-          argsMap[key] = CLValue.newCLUInt128(parsed as string);
+          argsMap[key] = CLValue.newCLUInt128(BigInt(parsed as string));
         } else if (clType === "U64") {
           argsMap[key] = CLValue.newCLUint64(Number(parsed));
         } else if (clType === "U32") {

@@ -29,13 +29,18 @@ export const GAS_PRICE = 1;
 
 // Gas payment amounts (CLValue U512 encoding)
 // These bytes represent the payment amounts for transaction fees
-// Format: length prefix (05) + little-endian value
+// Format: length prefix + little-endian value
 //
 // Transfer: 0.1 CSPR = 100,000,000 motes = 0x05F5E100
 export const TRANSFER_PAYMENT_BYTES = "0500e1f505";
+export const TRANSFER_PAYMENT_MOTES = 100_000_000;
 
 // Delegation: 2.5 CSPR = 2,500,000,000 motes = 0x9502F900
 export const DELEGATION_PAYMENT_BYTES = "050094357700";
+export const DELEGATION_PAYMENT_MOTES = 2_500_000_000;
+
+// Contract calls: 3 CSPR = 3,000,000,000 motes (for token/NFT/DAO/DEX operations)
+export const CONTRACT_PAYMENT_MOTES = 3_000_000_000;
 
 // Staking constraints
 export const MIN_DELEGATION_CSPR = 500;

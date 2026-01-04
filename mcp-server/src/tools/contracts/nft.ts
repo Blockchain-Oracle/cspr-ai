@@ -350,17 +350,13 @@ export function registerBuildNftMintTool(server: McpServer, client: CasperClient
         validatePublicKeys([from_public_key, to]);
 
         const network = client.getChainName();
-        const entryPoint = token_uri ? "mint" : "mint_with_auto_uri";
-        const args = token_uri
-          ? [
-              ["to", { cl_type: "Key", parsed: to }],
-              ["name", { cl_type: "String", parsed: token_name }],
-              ["token_uri", { cl_type: "String", parsed: token_uri }]
-            ]
-          : [
-              ["to", { cl_type: "Key", parsed: to }],
-              ["name", { cl_type: "String", parsed: token_name }]
-            ];
+        // Contract always uses 'mint' entry point with 3 args: (to, _name, token_uri)
+        const entryPoint = "mint";
+        const args = [
+          ["to", { cl_type: "Key", parsed: to }],
+          ["_name", { cl_type: "String", parsed: token_name }],
+          ["token_uri", { cl_type: "String", parsed: token_uri || "" }]
+        ];
 
         const unsignedDeploy = buildStoredContractDeploy(
           from_public_key,
