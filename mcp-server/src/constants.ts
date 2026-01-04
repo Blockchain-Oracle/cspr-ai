@@ -36,7 +36,8 @@ export const TRANSFER_PAYMENT_BYTES = "0500e1f505";
 export const TRANSFER_PAYMENT_MOTES = 100_000_000;
 
 // Delegation: 2.5 CSPR = 2,500,000,000 motes = 0x9502F900
-export const DELEGATION_PAYMENT_BYTES = "050094357700";
+// Encoding: length prefix (04) + little-endian bytes (00 F9 02 95)
+export const DELEGATION_PAYMENT_BYTES = "0400f90295";
 export const DELEGATION_PAYMENT_MOTES = 2_500_000_000;
 
 // Contract calls: 3 CSPR = 3,000,000,000 motes (for token/NFT/DAO/DEX operations)
