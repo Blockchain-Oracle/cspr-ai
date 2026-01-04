@@ -45,6 +45,10 @@ export const CONTRACT_PAYMENT_MOTES = 3_000_000_000;
 // Staking constraints
 export const MIN_DELEGATION_CSPR = 500;
 
+// Auction contract hash (for delegation transactions)
+// This is the system auction contract on both testnet and mainnet
+export const AUCTION_CONTRACT_HASH = "93d923e336b20a4c4ca14d592b60e5bd3fe330775618290104f9beb326db7ae2";
+
 // Memo constraints
 export const MAX_MEMO_LENGTH = 100;
 

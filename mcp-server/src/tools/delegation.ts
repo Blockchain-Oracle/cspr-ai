@@ -12,7 +12,8 @@ import { DelegateStakeInputSchema } from "../schemas/index.js";
 import {
   DEPLOY_TTL,
   GAS_PRICE,
-  DELEGATION_PAYMENT_BYTES
+  DELEGATION_PAYMENT_BYTES,
+  AUCTION_CONTRACT_HASH
 } from "../constants.js";
 import { CasperClient } from "../services/casper-client.js";
 import { createErrorResult } from "../utils/errors.js";
@@ -105,12 +106,12 @@ export function registerDelegationTool(server: McpServer, client: CasperClient):
               }
             },
             session: {
-              stored_contract_by_name: {
-                name: "auction",
+              stored_contract_by_hash: {
+                hash: AUCTION_CONTRACT_HASH,
                 entry_point: "delegate",
                 args: [
-                  ["delegator", { cl_type: "PublicKey", parsed: params.delegator_public_key }],
                   ["validator", { cl_type: "PublicKey", parsed: params.validator_public_key }],
+                  ["delegator", { cl_type: "PublicKey", parsed: params.delegator_public_key }],
                   ["amount", { cl_type: "U512", parsed: amountMotes }]
                 ]
               }

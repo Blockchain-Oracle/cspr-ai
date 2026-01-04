@@ -13,6 +13,7 @@
  */
 
 import casperSdk from "casper-js-sdk";
+import { AUCTION_CONTRACT_HASH } from "../constants.js";
 
 const {
   PrivateKey,
@@ -280,10 +281,27 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
     } else if (transactionJson.session.stored_contract_by_hash) {
       // Contract call
       const contractCall = transactionJson.session.stored_contract_by_hash;
-      const argsMap: Record<string, unknown> = {};
 
-      // Convert args array to map with proper CLValue construction
-      for (const [key, value] of contractCall.args) {
+      // Check if this is a delegation to the auction contract
+      // Use NativeDelegateBuilder for proper Casper 1.5 delegation deploy format
+      if (contractCall.hash === AUCTION_CONTRACT_HASH && contractCall.entry_point === 'delegate') {
+        const delegateArgs = contractCall.args;
+        const validatorArg = delegateArgs.find(([key]: [string, any]) => key === 'validator')?.[1]?.parsed as string;
+        const amountArg = delegateArgs.find(([key]: [string, any]) => key === 'amount')?.[1]?.parsed as string;
+
+        builder = new NativeDelegateBuilder()
+          .from(senderKey)
+          .validator(PublicKey.fromHex(validatorArg))
+          .amount(amountArg)
+          .chainName(chainName)
+          .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
+          .payment(paymentAmount);
+      } else {
+        // Regular contract call
+        const argsMap: Record<string, unknown> = {};
+
+        // Convert args array to map with proper CLValue construction
+        for (const [key, value] of contractCall.args) {
         const clType = value.cl_type as string;
         const parsed = value.parsed;
 
@@ -360,6 +378,7 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
         .runtimeArgs(Args.fromMap(argsMap as Record<string, never>))
         .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
         .payment(paymentAmount);
+      }
 
     } else if ((transactionJson.session as any).stored_contract_by_name) {
       // Check if this is a delegation to the auction contract
