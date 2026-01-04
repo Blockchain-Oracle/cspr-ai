@@ -590,6 +590,18 @@ cspr-ai/
 │   ├── package.json
 │   └── tsconfig.json
 │
+├── contracts/                  # Smart contracts (Rust/Odra)
+│   ├── src/
+│   │   ├── token.rs           # CEP-18 fungible token
+│   │   ├── nft.rs             # NFT collection
+│   │   ├── dao.rs             # Governance DAO
+│   │   └── dex.rs             # AMM DEX
+│   ├── bin/                   # Build and deploy scripts
+│   ├── wasm/                  # Compiled WASM (gitignored)
+│   ├── Cargo.toml
+│   ├── Odra.toml
+│   └── README.md              # Contract documentation
+│
 ├── web/                        # Web dashboard (Next.js)
 │   ├── app/                   # Next.js app router
 │   ├── components/            # React components

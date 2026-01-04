@@ -326,9 +326,10 @@ export function reconstructTransaction(transactionJson: SdkTransactionJson): Tra
       throw new Error("Unknown transaction type - must be transfer, stored_contract_by_hash, or delegation");
     }
 
-    // Build the transaction for Casper 2.0 network
-    // .build() returns Transaction format with {hash, payload, approvals} structure
-    const transaction = builder.build();
+    // Build the transaction for Casper 1.5 network (testnet compatibility)
+    // .buildFor1_5() returns Deploy format which is what current testnet expects
+    // .build() returns Transaction V1 format for Casper 2.0 (not yet deployed on testnet)
+    const transaction = builder.buildFor1_5();
 
     if (!transaction) {
       throw new Error("Builder returned null/undefined");

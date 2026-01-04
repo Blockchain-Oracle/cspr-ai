@@ -1,0 +1,51 @@
+[package]
+name = "cspr-ai-contracts"
+version = "0.1.0"
+edition = "2021"
+authors = ["CSPR.AI Team"]
+license = "Apache-2.0"
+description = "Smart contracts for CSPR.AI - DAO, NFT, Token, DEX"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+odra = { git = "https://github.com/odradev/odra", branch = "release/2.5.0" }
+odra-modules = { git = "https://github.com/odradev/odra", branch = "release/2.5.0", default-features = false }
+
+[dev-dependencies]
+odra-test = { git = "https://github.com/odradev/odra", branch = "release/2.5.0" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+odra-casper-livenet-env = { git = "https://github.com/odradev/odra", branch = "release/2.5.0" }
+
+[build-dependencies]
+odra-build = { git = "https://github.com/odradev/odra", branch = "release/2.5.0" }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+odra-build = { git = "https://github.com/odradev/odra", branch = "release/2.5.0" }
+
+[[bin]]
+name = "cspr_ai_contracts_build_contract"
+path = "bin/build_contract.rs"
+test = false
+
+[[bin]]
+name = "deploy_on_livenet"
+path = "bin/deploy_on_livenet.rs"
+test = false
+required-features = ["livenet"]
+
+[features]
+default = []
+livenet = ["odra-casper-livenet-env"]
+
+[dependencies.odra-casper-livenet-env]
+git = "https://github.com/odradev/odra"
+branch = "release/2.5.0"
+optional = true
+
+[profile.release]
+lto = true
+opt-level = 'z'
+codegen-units = 1

@@ -1,0 +1,29 @@
+[project]
+name = "cspr-ai-contracts"
+authors = ["CSPR.AI Team"]
+
+[build]
+# Contract modules to build
+[[contracts]]
+name = "Cep18Token"
+fqn = "cspr_ai_contracts::token::Cep18Token"
+
+[[contracts]]
+name = "NftCollection"
+fqn = "cspr_ai_contracts::nft::NftCollection"
+
+[[contracts]]
+name = "GovernanceDAO"
+fqn = "cspr_ai_contracts::dao::GovernanceDAO"
+
+[[contracts]]
+name = "CsprAiDEX"
+fqn = "cspr_ai_contracts::dex::CsprAiDEX"
+
+[network.testnet]
+chain_name = "casper-test"
+node_address = "https://node.testnet.cspr.cloud/rpc"
+
+[network.mainnet]
+chain_name = "casper"
+node_address = "https://node.cspr.cloud/rpc"
