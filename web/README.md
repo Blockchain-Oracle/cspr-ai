@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="../assets/logo.svg" alt="CSPR.AI Logo" width="80" height="80" />
+  <img src="../assets/logo.svg" alt="CSPR.AI" width="200" />
 </p>
 
-<h1 align="center">CSPR.AI Web Dashboard</h1>
+<h1 align="center">Web Dashboard</h1>
 
 <p align="center">
   AI-powered web interface for interacting with the Casper blockchain through natural language.

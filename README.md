@@ -1,8 +1,6 @@
 <p align="center">
-  <img src="./assets/logo.svg" alt="CSPR.AI Logo" width="120" height="120" />
+  <img src="./assets/logo.svg" alt="CSPR.AI" width="280" />
 </p>
-
-<h1 align="center">CSPR.AI</h1>
 
 <p align="center">
   <strong>AI-powered Model Context Protocol (MCP) server for Casper Network</strong>
