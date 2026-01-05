@@ -10,6 +10,13 @@
 
 // Fix for ESM/CommonJS interop - casper-js-sdk is CommonJS
 import casperSdk from "casper-js-sdk";
+import {
+  AUCTION_CONTRACT_HASH,
+  MOTES_PER_CSPR,
+  PAYMENT_TRANSFER_MOTES,
+  PAYMENT_CONTRACT_CALL_MOTES,
+  MIN_VALID_PAYMENT_MOTES,
+} from "./constants";
 
 const {
   PublicKey,
@@ -21,9 +28,51 @@ const {
   Deploy,
 } = casperSdk;
 
-// Auction contract hash (for delegation transactions)
-// This is the system auction contract on both testnet and mainnet
-const AUCTION_CONTRACT_HASH = "93d923e336b20a4c4ca14d592b60e5bd3fe330775618290104f9beb326db7ae2";
+// Debug logging - only enabled in development
+const DEBUG = process.env.NODE_ENV === 'development';
+function debugLog(message: string, ...args: unknown[]): void {
+  if (DEBUG) {
+    console.log(`[transaction-utils] ${message}`, ...args);
+  }
+}
+
+// ============================================================================
+// Type Definitions
+// ============================================================================
+
+/** CLValue argument tuple: [key, value] */
+type CLValueArg = [string, { parsed: unknown; cl_type: string; bytes?: string }];
+
+/** Transfer session data */
+interface TransferSession {
+  args: CLValueArg[];
+}
+
+/** Contract call session data */
+interface StoredContractByHashSession {
+  args: CLValueArg[];
+  entry_point: string;
+  hash: string;
+  hash_type?: 'package' | 'contract';
+}
+
+/** Contract by name session data */
+interface StoredContractByNameSession {
+  args: CLValueArg[];
+  entry_point: string;
+  name: string;
+}
+
+/** Module bytes session data */
+interface ModuleBytesSession {
+  args: CLValueArg[];
+  module_bytes: string;
+}
+
+/** Payment module bytes */
+interface PaymentModuleBytes {
+  args: CLValueArg[];
+}
 
 /**
  * SDK-produced transaction JSON structure (from MCP tools)
@@ -41,74 +90,96 @@ export interface SdkTransactionJson {
     ttl: string;
   };
   payment: {
-    module_bytes?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown; bytes?: string }]>;
-    };
-    ModuleBytes?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown; bytes?: string }]>;
-    };
+    module_bytes?: PaymentModuleBytes;
+    ModuleBytes?: PaymentModuleBytes;
   };
   session: {
-    transfer?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-    };
-    Transfer?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-    };
-    stored_contract_by_hash?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      entry_point: string;
-      hash: string;
-      hash_type?: 'package' | 'contract';
-    };
-    StoredContractByHash?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      entry_point: string;
-      hash: string;
-    };
-    stored_contract_by_name?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      entry_point: string;
-      name: string;
-    };
-    StoredContractByName?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      entry_point: string;
-      name: string;
-    };
-    module_bytes?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      module_bytes: string;
-    };
-    ModuleBytes?: {
-      args: Array<[string, { parsed: unknown; cl_type: unknown }]>;
-      module_bytes: string;
-    };
+    transfer?: TransferSession;
+    Transfer?: TransferSession;
+    stored_contract_by_hash?: StoredContractByHashSession;
+    StoredContractByHash?: StoredContractByHashSession;
+    stored_contract_by_name?: StoredContractByNameSession;
+    StoredContractByName?: StoredContractByNameSession;
+    module_bytes?: ModuleBytesSession;
+    ModuleBytes?: ModuleBytesSession;
   };
   approvals?: Array<{ signer: string; signature: string }>;
 }
 
+/** Simplified MCP format (used for some tools) */
+interface SimplifiedMcpFormat {
+  deploy_type?: string;
+  contract_address?: string;
+  entry_point?: string;
+  caller?: string;
+  from?: string;
+  network?: string;
+  gas_price?: number;
+  ttl?: string;
+  payment_amount?: string;
+  hash_type?: 'package' | 'contract';
+  args?: CLValueArg[];
+}
+
+// ============================================================================
+// U512 Encoding/Decoding Utilities
+// ============================================================================
+
 /**
  * Decode a CLValue U512 from hex bytes
  * Format: length prefix byte + little-endian value bytes
+ *
+ * @param hexBytes - Hex string with optional 0x prefix
+ * @returns Decoded BigInt value
+ * @throws Error if hex string is invalid
  */
-function decodeU512Bytes(hexBytes: string): bigint {
+export function decodeU512Bytes(hexBytes: string): bigint {
   const hex = hexBytes.startsWith('0x') ? hexBytes.slice(2) : hexBytes;
+
+  if (!/^[0-9a-fA-F]*$/.test(hex)) {
+    throw new Error(`Invalid hex string: ${hexBytes}`);
+  }
+
+  if (hex.length < 2) {
+    throw new Error(`Hex string too short: ${hexBytes}`);
+  }
+
   const length = parseInt(hex.slice(0, 2), 16);
+
+  // Handle zero value
+  if (length === 0) {
+    return 0n;
+  }
+
   const valueHex = hex.slice(2, 2 + length * 2);
+
+  if (valueHex.length !== length * 2) {
+    throw new Error(`Invalid U512 encoding: expected ${length * 2} chars, got ${valueHex.length}`);
+  }
+
+  // Convert little-endian bytes to big-endian
   const bytes: string[] = [];
   for (let i = 0; i < valueHex.length; i += 2) {
     bytes.push(valueHex.slice(i, i + 2));
   }
   const bigEndianHex = bytes.reverse().join('');
+
   return BigInt('0x' + bigEndianHex);
 }
 
 /**
  * Encode a BigInt to CLValue U512 hex bytes
  * Format: length prefix byte + little-endian value bytes
+ *
+ * @param value - Non-negative BigInt value to encode
+ * @returns Hex string without 0x prefix
+ * @throws Error if value is negative
  */
-function encodeU512ToBytes(value: bigint): string {
+export function encodeU512ToBytes(value: bigint): string {
+  if (value < 0n) {
+    throw new Error('U512 cannot be negative');
+  }
+
   if (value === 0n) {
     return '00';
   }
@@ -135,55 +206,46 @@ function encodeU512ToBytes(value: bigint): string {
   return lengthByte + bytes.join('');
 }
 
-// Payment constants in motes (1 CSPR = 1,000,000,000 motes)
-const CSPR_TO_MOTES = 1_000_000_000;
-const PAYMENT_TRANSFER = 0.1 * CSPR_TO_MOTES;      // 0.1 CSPR for native transfers
-const PAYMENT_CONTRACT_CALL = 3 * CSPR_TO_MOTES;  // 3 CSPR for contract calls (covers most operations)
+// ============================================================================
+// Payment Parsing
+// ============================================================================
 
 /**
  * Parse payment amount from transaction JSON
  * Handles both decimal strings and CLValue hex bytes
- * Returns the parsed amount or null if parsing fails
+ *
+ * @param amountValue - Object with parsed and/or bytes fields
+ * @returns Parsed amount in motes, or null if parsing fails
  */
 function parsePaymentAmount(amountValue: { parsed?: unknown; bytes?: string }): number | null {
-  console.log(`[parsePaymentAmount] Input:`, JSON.stringify(amountValue));
+  debugLog('parsePaymentAmount input:', JSON.stringify(amountValue));
 
   // Try bytes field first (CLValue format)
   if (amountValue.bytes && typeof amountValue.bytes === 'string') {
-    console.log(`[parsePaymentAmount] Trying bytes field: "${amountValue.bytes}"`);
     try {
       const amount = Number(decodeU512Bytes(amountValue.bytes));
-      console.log(`[parsePaymentAmount] Decoded bytes to ${amount} motes (${amount / 1_000_000_000} CSPR)`);
-      // Only return if it's a reasonable amount (at least 0.01 CSPR)
-      if (amount >= 10_000_000) {
+      if (amount >= MIN_VALID_PAYMENT_MOTES) {
+        debugLog(`Decoded bytes to ${amount} motes (${amount / MOTES_PER_CSPR} CSPR)`);
         return amount;
       }
-      console.log(`[parsePaymentAmount] Amount ${amount} is below minimum 10_000_000`);
-    } catch (e) {
-      console.log(`[parsePaymentAmount] Failed to decode bytes: ${e}`);
-      // Fall through to parsed
+    } catch {
+      // Fall through to parsed field
     }
   }
 
   // Try parsed field
   if (amountValue.parsed !== undefined) {
     const parsed = String(amountValue.parsed);
-    console.log(`[parsePaymentAmount] Trying parsed field: "${parsed}"`);
 
     // Check if it looks like hex bytes (contains hex letters a-f)
-    // MCP server outputs payment as hex like "0500e1f505" which represents CLValue bytes
     if (/^[0-9a-fA-F]+$/.test(parsed) && /[a-fA-F]/.test(parsed)) {
-      // This contains hex letters, so it's definitely hex-encoded bytes
-      console.log(`[parsePaymentAmount] Parsed looks like hex bytes, decoding...`);
       try {
         const amount = Number(decodeU512Bytes(parsed));
-        console.log(`[parsePaymentAmount] Decoded hex "${parsed}" to ${amount} motes (${amount / 1_000_000_000} CSPR)`);
-        // Only return if it's a reasonable amount (at least 0.01 CSPR)
-        if (amount >= 10_000_000) {
+        if (amount >= MIN_VALID_PAYMENT_MOTES) {
+          debugLog(`Decoded hex to ${amount} motes (${amount / MOTES_PER_CSPR} CSPR)`);
           return amount;
         }
-      } catch (e) {
-        console.log(`[parsePaymentAmount] Failed to decode hex: ${e}`);
+      } catch {
         // Fall through to decimal parse
       }
     }
@@ -191,27 +253,30 @@ function parsePaymentAmount(amountValue: { parsed?: unknown; bytes?: string }): 
     // Check if purely numeric (decimal string)
     if (/^\d+$/.test(parsed)) {
       const decimal = parseInt(parsed, 10);
-      console.log(`[parsePaymentAmount] Parsed decimal "${parsed}" to ${decimal} motes (${decimal / 1_000_000_000} CSPR)`);
-      // Only return if it's a reasonable amount (at least 0.01 CSPR)
-      if (!isNaN(decimal) && decimal >= 10_000_000) {
+      if (!isNaN(decimal) && decimal >= MIN_VALID_PAYMENT_MOTES) {
+        debugLog(`Parsed decimal to ${decimal} motes (${decimal / MOTES_PER_CSPR} CSPR)`);
         return decimal;
       }
-      console.log(`[parsePaymentAmount] Decimal ${decimal} failed validation`);
-    } else {
-      console.log(`[parsePaymentAmount] Parsed "${parsed}" does not match decimal pattern`);
     }
   }
 
-  // Return null to indicate parsing failed - caller should use appropriate default
-  console.log(`[parsePaymentAmount] Failed to parse, returning null`);
+  debugLog('Failed to parse payment amount, returning null');
   return null;
 }
+
+// ============================================================================
+// TTL Parsing
+// ============================================================================
 
 /**
  * Parse TTL string to milliseconds
  * Supports: "30m", "1h", "60s", "1800000ms", or raw number
+ *
+ * @param ttl - TTL string in various formats
+ * @returns TTL in milliseconds
+ * @throws Error if format is invalid
  */
-function parseTtlToMilliseconds(ttl: string): number {
+export function parseTtlToMilliseconds(ttl: string): number {
   if (/^\d+$/.test(ttl)) {
     return parseInt(ttl, 10);
   }
@@ -233,232 +298,199 @@ function parseTtlToMilliseconds(ttl: string): number {
   }
 }
 
+// ============================================================================
+// CLValue Conversion
+// ============================================================================
+
+/**
+ * Convert a parsed CLValue argument to SDK CLValue
+ *
+ * @param clType - The CL type string (e.g., "Key", "U256", "String")
+ * @param parsed - The parsed value
+ * @returns SDK CLValue object
+ */
+function convertToCLValue(clType: string, parsed: unknown): unknown {
+  switch (clType) {
+    case "Key": {
+      const parsedStr = parsed as string;
+      if (parsedStr.startsWith('hash-') || parsedStr.startsWith('account-hash-')) {
+        const keyObj = Key.newKey(parsedStr);
+        return CLValue.newCLKey(keyObj);
+      } else {
+        // Public key - convert to account-hash format
+        const publicKey = PublicKey.fromHex(parsedStr);
+        const accountHash = publicKey.accountHash();
+        const keyStr = accountHash.toPrefixedString();
+        const keyObj = Key.newKey(keyStr);
+        return CLValue.newCLKey(keyObj);
+      }
+    }
+    case "U256":
+      return CLValue.newCLUInt256(BigInt(parsed as string));
+    case "U512":
+      return CLValue.newCLUInt512(BigInt(parsed as string));
+    case "U128":
+      return CLValue.newCLUInt128(BigInt(parsed as string));
+    case "U64":
+      return CLValue.newCLUint64(Number(parsed));
+    case "U32":
+      return CLValue.newCLUInt32(Number(parsed));
+    case "U8":
+      return CLValue.newCLUint8(Number(parsed));
+    case "Bool":
+      return CLValue.newCLValueBool(Boolean(parsed));
+    case "String":
+      return CLValue.newCLString(parsed as string);
+    case "ByteArray":
+      return CLValue.newCLByteArray(Uint8Array.from(parsed as number[]));
+    case "PublicKey": {
+      const publicKey = PublicKey.fromHex(parsed as string);
+      return CLValue.newCLPublicKey(publicKey);
+    }
+    default:
+      // Return as-is for unknown types
+      return parsed;
+  }
+}
+
+// ============================================================================
+// Transaction Reconstruction
+// ============================================================================
+
 /**
  * Reconstruct Transaction object from MCP tool output
  *
  * Converts simplified JSON structure to proper SDK Transaction object
  * using builder pattern (same as backend signing utilities).
+ *
+ * @param transactionJson - MCP tool output in standard format
+ * @returns SDK Deploy object ready for serialization
  */
-function reconstructTransaction(transactionJson: SdkTransactionJson): any {
-  try {
-    const senderKey = PublicKey.fromHex(transactionJson.header.account);
-    const chainName = transactionJson.header.chain_name;
+function reconstructTransaction(transactionJson: SdkTransactionJson): unknown {
+  const senderKey = PublicKey.fromHex(transactionJson.header.account);
+  const chainName = transactionJson.header.chain_name;
 
-    // Parse payment amount - check both lowercase and PascalCase
-    let parsedPayment: number | null = null;
-    const paymentArgs = transactionJson.payment?.module_bytes?.args ||
-                        transactionJson.payment?.ModuleBytes?.args;
-    console.log('[reconstructTransaction] Full payment object:', JSON.stringify(transactionJson.payment));
-    console.log('[reconstructTransaction] Raw payment args:', JSON.stringify(paymentArgs));
-    if (paymentArgs) {
-      const amountArg = paymentArgs.find(
-        ([key]: [string, any]) => key === 'amount'
-      );
-      console.log('[reconstructTransaction] Amount arg:', JSON.stringify(amountArg));
-      if (amountArg && amountArg[1]) {
-        parsedPayment = parsePaymentAmount(amountArg[1] as { parsed?: unknown; bytes?: string });
-        console.log('[reconstructTransaction] Parsed payment result:', parsedPayment);
-      }
+  // Parse payment amount - check both lowercase and PascalCase
+  let parsedPayment: number | null = null;
+  const paymentArgs = transactionJson.payment?.module_bytes?.args ||
+                      transactionJson.payment?.ModuleBytes?.args;
+
+  if (paymentArgs) {
+    const amountArg = paymentArgs.find(([key]) => key === 'amount');
+    if (amountArg && amountArg[1]) {
+      parsedPayment = parsePaymentAmount(amountArg[1]);
     }
-
-    // CRITICAL: Always use at least 3 CSPR for contract calls regardless of input
-    // This ensures we don't accidentally use transfer payment (0.1 CSPR) for contract calls
-
-    let builder;
-
-    // Check both lowercase and PascalCase session variants
-    const transfer = transactionJson.session.transfer || transactionJson.session.Transfer;
-    const storedContractByHash = transactionJson.session.stored_contract_by_hash ||
-                                  transactionJson.session.StoredContractByHash;
-    const storedContractByName = transactionJson.session.stored_contract_by_name ||
-                                  transactionJson.session.StoredContractByName;
-    const moduleBytes = transactionJson.session.module_bytes ||
-                        transactionJson.session.ModuleBytes;
-
-    // Determine appropriate payment based on transaction type
-    // CRITICAL: Contract calls need at least 3 CSPR, transfers use 0.1 CSPR
-    const isContractCall = storedContractByHash || storedContractByName;
-    const minimumPayment = isContractCall ? PAYMENT_CONTRACT_CALL : PAYMENT_TRANSFER;
-
-    // Use parsed payment if valid AND sufficient for the transaction type
-    // Otherwise use the minimum required payment
-    let paymentAmount: number;
-    if (parsedPayment !== null && parsedPayment >= minimumPayment) {
-      paymentAmount = parsedPayment;
-    } else {
-      paymentAmount = minimumPayment;
-    }
-    console.log(`[reconstructTransaction] Payment: parsed=${parsedPayment}, minimum=${minimumPayment}, isContractCall=${isContractCall}, using=${paymentAmount}`);
-
-    // Determine transaction type and create appropriate builder
-    if (transfer) {
-      // Native CSPR transfer
-      const transferArgs = (transfer as any).args;
-      const amount = transferArgs.find(([key]: [string, any]) => key === 'amount')?.[1]?.parsed as string;
-      const target = transferArgs.find(([key]: [string, any]) => key === 'target')?.[1]?.parsed as string;
-      const id = transferArgs.find(([key]: [string, any]) => key === 'id')?.[1]?.parsed;
-
-      builder = new NativeTransferBuilder()
-        .from(senderKey)
-        .target(PublicKey.fromHex(target))
-        .amount(amount)
-        .chainName(chainName)
-        .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
-        .payment(paymentAmount);
-
-      if (id != null) {
-        builder.id(Number(id));
-      }
-
-    } else if (storedContractByHash) {
-      // Contract call
-      const contractCall = storedContractByHash as any;
-
-      // Check if this is a delegation to the auction contract
-      const isAuctionContract = contractCall.hash.toLowerCase() === AUCTION_CONTRACT_HASH.toLowerCase();
-      const isDelegateEntryPoint = contractCall.entry_point === 'delegate';
-
-      // Log delegation details for debugging
-      if (isAuctionContract && isDelegateEntryPoint) {
-        console.log('[transaction-utils] Detected delegation transaction');
-        console.log('[transaction-utils] Sender from header:', transactionJson.header.account);
-        console.log('[transaction-utils] Building delegation with ContractCallBuilder (using senderKey from header)');
-      }
-
-      // Build contract call args (works for both delegation and regular contracts)
-      const argsMap: Record<string, unknown> = {};
-
-      // Convert args to proper CLValues
-      for (const [key, value] of contractCall.args) {
-        const clType = value.cl_type as string;
-        const parsed = value.parsed;
-
-        if (clType === "Key") {
-          const parsedStr = parsed as string;
-          if (parsedStr.startsWith('hash-')) {
-            const keyObj = Key.newKey(parsedStr);
-            argsMap[key] = CLValue.newCLKey(keyObj);
-          } else if (parsedStr.startsWith('account-hash-')) {
-            const keyObj = Key.newKey(parsedStr);
-            argsMap[key] = CLValue.newCLKey(keyObj);
-          } else {
-            // Public key - convert to account-hash format
-            const publicKey = PublicKey.fromHex(parsedStr);
-            const accountHash = publicKey.accountHash();
-            const keyStr = accountHash.toPrefixedString();
-            const keyObj = Key.newKey(keyStr);
-            argsMap[key] = CLValue.newCLKey(keyObj);
-          }
-        } else if (clType === "U256") {
-          argsMap[key] = CLValue.newCLUInt256(BigInt(parsed as string));
-        } else if (clType === "U512") {
-          argsMap[key] = CLValue.newCLUInt512(BigInt(parsed as string));
-        } else if (clType === "U128") {
-          argsMap[key] = CLValue.newCLUInt128(BigInt(parsed as string));
-        } else if (clType === "U64") {
-          argsMap[key] = CLValue.newCLUint64(Number(parsed));
-        } else if (clType === "U32") {
-          argsMap[key] = CLValue.newCLUInt32(Number(parsed));
-        } else if (clType === "U8") {
-          argsMap[key] = CLValue.newCLUint8(Number(parsed));
-        } else if (clType === "Bool") {
-          argsMap[key] = CLValue.newCLValueBool(Boolean(parsed));
-        } else if (clType === "String") {
-          argsMap[key] = CLValue.newCLString(parsed as string);
-        } else if (clType === "ByteArray") {
-          argsMap[key] = CLValue.newCLByteArray(Uint8Array.from(parsed as number[]));
-        } else if (clType === "PublicKey") {
-          const publicKey = PublicKey.fromHex(parsed as string);
-          argsMap[key] = CLValue.newCLPublicKey(publicKey);
-        } else {
-          argsMap[key] = parsed;
-        }
-      }
-
-      // Determine which method to use based on contract type:
-      // - System contracts (auction): Use byHash() -> StoredContractByHash
-      // - User contracts (CEP-18, NFT, DAO, DEX): Use byPackageHash() -> StoredVersionedContractByHash
-      console.log(`[reconstructTransaction] Building contract call with payment: ${paymentAmount} motes (${paymentAmount / 1_000_000_000} CSPR)`);
-      console.log(`[reconstructTransaction] Contract hash: ${contractCall.hash}`);
-      console.log(`[reconstructTransaction] Entry point: ${contractCall.entry_point}`);
-      console.log(`[reconstructTransaction] Is auction contract: ${isAuctionContract}`);
-
-      builder = new ContractCallBuilder();
-
-      if (isAuctionContract) {
-        // Auction is a SYSTEM CONTRACT - use byHash() for StoredContractByHash
-        console.log('[reconstructTransaction] Using byHash() for system auction contract');
-        builder = builder.byHash(contractCall.hash);
-      } else {
-        // User contracts - use byPackageHash() for StoredVersionedContractByHash
-        console.log('[reconstructTransaction] Using byPackageHash() for user contract');
-        builder = builder.byPackageHash(contractCall.hash, null as unknown as number | undefined);
-      }
-
-      builder = builder
-        .from(senderKey)
-        .entryPoint(contractCall.entry_point)
-        .chainName(chainName)
-        .runtimeArgs(Args.fromMap(argsMap as Record<string, never>))
-        .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
-        .payment(paymentAmount);
-
-      console.log('[reconstructTransaction] ContractCallBuilder configured with payment');
-
-    } else if (storedContractByName) {
-      // stored_contract_by_name is not used by MCP server
-      // All contract calls use stored_contract_by_hash instead
-      const contractCall = storedContractByName as any;
-      throw new Error(`stored_contract_by_name for ${contractCall.name}/${contractCall.entry_point} is not supported. Use stored_contract_by_hash instead.`);
-
-    } else if (moduleBytes) {
-      throw new Error("module_bytes session type requires WASM bytes and is not supported in browser signing");
-    } else {
-      throw new Error("Unknown transaction type - must be transfer or stored_contract_by_hash");
-    }
-
-    // Build for Casper 1.5 (Deploy format) which testnet uses
-    const builtDeploy = builder.buildFor1_5();
-    console.log('[reconstructTransaction] Built deploy, serializing to check payment...');
-
-    // Log the payment from the built deploy to verify it's correct
-    try {
-      // The built deploy should have a toJSON method or we use Deploy.toJSON
-      const deployAsAny = builtDeploy as any;
-      let deployJson: any;
-      if (deployAsAny.header && deployAsAny.payment && deployAsAny.session) {
-        // It's a Deploy object - use static toJSON
-        deployJson = Deploy.toJSON(deployAsAny);
-      } else if (typeof deployAsAny.toJSON === 'function') {
-        deployJson = deployAsAny.toJSON();
-      }
-      if (deployJson) {
-        const deployPayment = deployJson?.payment;
-        console.log('[reconstructTransaction] Built deploy payment:', JSON.stringify(deployPayment));
-      }
-    } catch (e) {
-      console.log('[reconstructTransaction] Could not log built deploy payment:', e);
-    }
-
-    return builtDeploy;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Failed to reconstruct transaction: ${message}`);
   }
+
+  // Check both lowercase and PascalCase session variants
+  const transfer = transactionJson.session.transfer || transactionJson.session.Transfer;
+  const storedContractByHash = transactionJson.session.stored_contract_by_hash ||
+                                transactionJson.session.StoredContractByHash;
+  const storedContractByName = transactionJson.session.stored_contract_by_name ||
+                                transactionJson.session.StoredContractByName;
+  const moduleBytes = transactionJson.session.module_bytes ||
+                      transactionJson.session.ModuleBytes;
+
+  // Determine appropriate payment based on transaction type
+  const isContractCall = storedContractByHash || storedContractByName;
+  const minimumPayment = isContractCall ? PAYMENT_CONTRACT_CALL_MOTES : PAYMENT_TRANSFER_MOTES;
+
+  // Use parsed payment if valid AND sufficient, otherwise use minimum
+  const paymentAmount = (parsedPayment !== null && parsedPayment >= minimumPayment)
+    ? parsedPayment
+    : minimumPayment;
+
+  debugLog(`Payment: parsed=${parsedPayment}, minimum=${minimumPayment}, using=${paymentAmount}`);
+
+  let builder;
+
+  // Determine transaction type and create appropriate builder
+  if (transfer) {
+    // Native CSPR transfer
+    const transferArgs = transfer.args;
+    const amount = transferArgs.find(([key]) => key === 'amount')?.[1]?.parsed as string;
+    const target = transferArgs.find(([key]) => key === 'target')?.[1]?.parsed as string;
+    const id = transferArgs.find(([key]) => key === 'id')?.[1]?.parsed;
+
+    builder = new NativeTransferBuilder()
+      .from(senderKey)
+      .target(PublicKey.fromHex(target))
+      .amount(amount)
+      .chainName(chainName)
+      .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
+      .payment(paymentAmount);
+
+    if (id != null) {
+      builder.id(Number(id));
+    }
+
+  } else if (storedContractByHash) {
+    // Contract call
+    const contractCall = storedContractByHash;
+    const isAuctionContract = contractCall.hash.toLowerCase() === AUCTION_CONTRACT_HASH.toLowerCase();
+
+    debugLog(`Contract call: hash=${contractCall.hash}, entry_point=${contractCall.entry_point}, isAuction=${isAuctionContract}`);
+
+    // Build contract call args
+    const argsMap: Record<string, unknown> = {};
+    for (const [key, value] of contractCall.args) {
+      argsMap[key] = convertToCLValue(value.cl_type, value.parsed);
+    }
+
+    // Determine which method to use based on contract type:
+    // - System contracts (auction): Use byHash() -> StoredContractByHash
+    // - User contracts (CEP-18, NFT, DAO, DEX): Use byPackageHash() -> StoredVersionedContractByHash
+    builder = new ContractCallBuilder();
+
+    if (isAuctionContract) {
+      debugLog('Using byHash() for system auction contract');
+      builder = builder.byHash(contractCall.hash);
+    } else {
+      debugLog('Using byPackageHash() for user contract');
+      builder = builder.byPackageHash(contractCall.hash, undefined);
+    }
+
+    builder = builder
+      .from(senderKey)
+      .entryPoint(contractCall.entry_point)
+      .chainName(chainName)
+      .runtimeArgs(Args.fromMap(argsMap as Record<string, never>))
+      .ttl(parseTtlToMilliseconds(transactionJson.header.ttl))
+      .payment(paymentAmount);
+
+  } else if (storedContractByName) {
+    // stored_contract_by_name is not used by MCP server
+    throw new Error(`stored_contract_by_name for ${storedContractByName.name}/${storedContractByName.entry_point} is not supported. Use stored_contract_by_hash instead.`);
+
+  } else if (moduleBytes) {
+    throw new Error("module_bytes session type requires WASM bytes and is not supported in browser signing");
+
+  } else {
+    throw new Error("Unknown transaction type - must be transfer or stored_contract_by_hash");
+  }
+
+  // Build for Casper 1.5 (Deploy format) which testnet uses
+  return builder.buildFor1_5();
 }
+
+// ============================================================================
+// Simplified Format Conversion
+// ============================================================================
 
 /**
  * Convert simplified MCP format to standard transaction JSON format
  * Handles formats that don't have the standard header/payment/session structure
+ *
+ * @param tx - Simplified MCP format object
+ * @returns Standard transaction JSON or null if not a simplified format
  */
-function convertSimplifiedFormat(tx: any): SdkTransactionJson | null {
-  // Check if this is a simplified format (has deploy_type or contract_address but no session)
+function convertSimplifiedFormat(tx: SimplifiedMcpFormat): SdkTransactionJson | null {
+  // Check if this is a simplified format
   if (!tx.deploy_type && !tx.contract_address && !tx.entry_point) {
     return null;
   }
 
-  // This is a simplified format - convert to standard format
-  console.log('[transaction-utils] Converting simplified MCP format to standard format');
+  debugLog('Converting simplified MCP format to standard format');
 
   // Get the caller/from address
   const caller = tx.caller || tx.from;
@@ -489,7 +521,7 @@ function convertSimplifiedFormat(tx: any): SdkTransactionJson | null {
 
   // Add session based on type
   if (tx.contract_address) {
-    const contractHash = tx.contract_address.replace('hash-', '');
+    const contractHash = tx.contract_address.replace('hash-', '').replace('contract-package-', '');
     standardFormat.session.stored_contract_by_hash = {
       hash: contractHash,
       entry_point: tx.entry_point || 'unknown',
@@ -505,6 +537,10 @@ function convertSimplifiedFormat(tx: any): SdkTransactionJson | null {
   return standardFormat;
 }
 
+// ============================================================================
+// Public API
+// ============================================================================
+
 /**
  * Convert MCP Transaction V1 format to Deploy format for wallet signing
  *
@@ -513,120 +549,104 @@ function convertSimplifiedFormat(tx: any): SdkTransactionJson | null {
  *
  * @param unsignedTransaction - Transaction V1 JSON from MCP tool's unsigned_deploy field
  * @returns Deploy format ready for CSPR.click wallet signing
+ * @throws Error if conversion fails
  */
 export function convertToDeployFormat(unsignedTransaction: object): object {
-  try {
-    // Log full input for debugging
-    const inputStr = JSON.stringify(unsignedTransaction);
-    console.log('[convertToDeployFormat] Full input length:', inputStr.length);
-    console.log('[convertToDeployFormat] Input (first 1000 chars):', inputStr.substring(0, 1000));
-    console.log('[convertToDeployFormat] Input payment field:', JSON.stringify((unsignedTransaction as any)?.payment));
+  debugLog('Input length:', JSON.stringify(unsignedTransaction).length);
 
-    // Check if this is already in Deploy format (PascalCase session keys)
-    const tx = unsignedTransaction as any;
-    if (tx.session) {
-      const sessionKeys = Object.keys(tx.session);
-      console.log('[convertToDeployFormat] Session keys:', sessionKeys);
-      const hasPascalCaseVariant = sessionKeys.some(key =>
-        key === 'Transfer' ||
-        key === 'StoredContractByHash' ||
-        key === 'StoredContractByName' ||
-        key === 'ModuleBytes'
-      );
+  // Check if this is already in Deploy format (PascalCase session keys)
+  const tx = unsignedTransaction as Record<string, unknown>;
+  if (tx.session && typeof tx.session === 'object') {
+    const sessionKeys = Object.keys(tx.session as object);
+    const hasPascalCaseVariant = sessionKeys.some(key =>
+      key === 'Transfer' ||
+      key === 'StoredContractByHash' ||
+      key === 'StoredContractByName' ||
+      key === 'ModuleBytes'
+    );
 
-      // If it's already in Deploy format and has proper structure, return as-is
-      if (hasPascalCaseVariant && tx.hash && tx.header?.body_hash) {
-        console.log('[transaction-utils] Deploy already in correct format, passing through');
-        console.log('[transaction-utils] WARNING: Passing through may lose payment amount!');
-        return unsignedTransaction;
-      }
+    // If it's already in Deploy format and has proper structure, return as-is
+    if (hasPascalCaseVariant && tx.hash && (tx.header as Record<string, unknown>)?.body_hash) {
+      debugLog('Deploy already in correct format, passing through');
+      return unsignedTransaction;
     }
-
-    // Check if this is a simplified format (no header/session structure)
-    let transactionToProcess = unsignedTransaction as SdkTransactionJson;
-    if (!tx.header || !tx.session) {
-      const converted = convertSimplifiedFormat(tx);
-      if (converted) {
-        transactionToProcess = converted;
-      }
-    }
-
-    // Step 1: Reconstruct Transaction from simplified JSON using SDK builders
-    console.log('[transaction-utils] Reconstructing transaction from MCP JSON...');
-    const transaction = reconstructTransaction(transactionToProcess);
-
-    if (!transaction) {
-      throw new Error("Failed to reconstruct transaction - builder returned null");
-    }
-
-    // Step 2: Convert to JSON for wallet signing
-    // The Deploy object has a toJSON() method or we can use Deploy.toJSON(deploy)
-    let deployJson: any;
-
-    // Check if this is a Deploy object (has header, payment, session structure)
-    const asDeploy = transaction as { header?: unknown; payment?: unknown; session?: unknown };
-    if (asDeploy.header && asDeploy.payment && asDeploy.session) {
-      // Use Deploy.toJSON static method for Deploy objects
-      deployJson = Deploy.toJSON(transaction);
-    } else if (typeof transaction.toJSON === 'function') {
-      // Use instance toJSON method
-      deployJson = transaction.toJSON();
-    } else {
-      throw new Error("Unable to serialize transaction: no toJSON method available");
-    }
-
-    // CRITICAL FIX: The SDK's ContractCallBuilder.payment() doesn't properly set payment
-    // We need to manually override the payment amount in the serialized JSON
-    // This ensures contract calls use 3 CSPR instead of the SDK's default 0.1 CSPR
-    console.log('[transaction-utils] Raw SDK output payment:', JSON.stringify(deployJson?.payment));
-
-    // Parse what payment we wanted from the original input
-    let desiredPayment: number | null = null;
-    const originalPayment = transactionToProcess.payment?.module_bytes?.args ||
-                            transactionToProcess.payment?.ModuleBytes?.args;
-    if (originalPayment) {
-      const originalAmountArg = originalPayment.find(([key]: [string, any]) => key === 'amount');
-      if (originalAmountArg && originalAmountArg[1]) {
-        desiredPayment = parsePaymentAmount(originalAmountArg[1] as { parsed?: unknown; bytes?: string });
-      }
-    }
-
-    // Determine transaction type for minimum payment
-    const isContractCall = transactionToProcess.session?.stored_contract_by_hash ||
-                           transactionToProcess.session?.StoredContractByHash ||
-                           transactionToProcess.session?.stored_contract_by_name ||
-                           transactionToProcess.session?.StoredContractByName;
-
-    const minimumPayment = isContractCall ? PAYMENT_CONTRACT_CALL : PAYMENT_TRANSFER;
-    const finalPayment = Math.max(desiredPayment || minimumPayment, minimumPayment);
-
-    console.log(`[transaction-utils] Payment fix: desired=${desiredPayment}, minimum=${minimumPayment}, final=${finalPayment} (${finalPayment / 1_000_000_000} CSPR)`);
-
-    // Override payment in the deploy JSON
-    // SDK outputs payment as ModuleBytes.args with CLValue bytes
-    if (deployJson?.payment?.ModuleBytes?.args) {
-      const amountArgIndex = deployJson.payment.ModuleBytes.args.findIndex(
-        ([key]: [string, any]) => key === 'amount'
-      );
-      if (amountArgIndex >= 0) {
-        // Create properly encoded U512 CLValue bytes for the payment amount
-        const paymentBytes = encodeU512ToBytes(BigInt(finalPayment));
-        deployJson.payment.ModuleBytes.args[amountArgIndex][1] = {
-          cl_type: 'U512',
-          bytes: paymentBytes
-        };
-        console.log(`[transaction-utils] Payment overridden to ${finalPayment} motes (bytes: ${paymentBytes})`);
-      }
-    }
-
-    console.log('[transaction-utils] Final payment:', JSON.stringify(deployJson?.payment));
-    console.log('[transaction-utils] Transaction converted to Deploy format');
-    return deployJson as object;
-
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Transaction format conversion failed: ${message}`);
   }
+
+  // Check if this is a simplified format (no header/session structure)
+  let transactionToProcess = unsignedTransaction as SdkTransactionJson;
+  if (!tx.header || !tx.session) {
+    const converted = convertSimplifiedFormat(tx as SimplifiedMcpFormat);
+    if (converted) {
+      transactionToProcess = converted;
+    }
+  }
+
+  // Step 1: Reconstruct Transaction from simplified JSON using SDK builders
+  debugLog('Reconstructing transaction from MCP JSON...');
+  const transaction = reconstructTransaction(transactionToProcess);
+
+  if (!transaction) {
+    throw new Error("Failed to reconstruct transaction - builder returned null");
+  }
+
+  // Step 2: Convert to JSON for wallet signing
+  let deployJson: Record<string, unknown>;
+
+  const asDeploy = transaction as { header?: unknown; payment?: unknown; session?: unknown; toJSON?: () => object };
+  if (asDeploy.header && asDeploy.payment && asDeploy.session) {
+    deployJson = Deploy.toJSON(transaction) as Record<string, unknown>;
+  } else if (typeof asDeploy.toJSON === 'function') {
+    deployJson = asDeploy.toJSON() as Record<string, unknown>;
+  } else {
+    throw new Error("Unable to serialize transaction: no toJSON method available");
+  }
+
+  // Step 3: Fix payment amount in serialized JSON
+  // The SDK's ContractCallBuilder.payment() doesn't always set payment correctly
+  const isContractCall = transactionToProcess.session?.stored_contract_by_hash ||
+                         transactionToProcess.session?.StoredContractByHash ||
+                         transactionToProcess.session?.stored_contract_by_name ||
+                         transactionToProcess.session?.StoredContractByName;
+
+  const minimumPayment = isContractCall ? PAYMENT_CONTRACT_CALL_MOTES : PAYMENT_TRANSFER_MOTES;
+
+  // Parse desired payment from original input
+  let desiredPayment: number | null = null;
+  const originalPayment = transactionToProcess.payment?.module_bytes?.args ||
+                          transactionToProcess.payment?.ModuleBytes?.args;
+  if (originalPayment) {
+    const originalAmountArg = originalPayment.find(([key]) => key === 'amount');
+    if (originalAmountArg && originalAmountArg[1]) {
+      desiredPayment = parsePaymentAmount(originalAmountArg[1]);
+    }
+  }
+
+  const finalPayment = Math.max(desiredPayment || minimumPayment, minimumPayment);
+  debugLog(`Payment fix: desired=${desiredPayment}, minimum=${minimumPayment}, final=${finalPayment}`);
+
+  // Override payment in the deploy JSON
+  const payment = deployJson.payment as Record<string, unknown> | undefined;
+  const moduleBytes = payment?.ModuleBytes as { args?: Array<[string, unknown]> } | undefined;
+
+  if (moduleBytes?.args) {
+    const amountArgIndex = moduleBytes.args.findIndex(([key]) => key === 'amount');
+    if (amountArgIndex >= 0) {
+      const paymentBytes = encodeU512ToBytes(BigInt(finalPayment));
+      moduleBytes.args[amountArgIndex][1] = {
+        cl_type: 'U512',
+        bytes: paymentBytes
+      };
+      debugLog(`Payment overridden to ${finalPayment} motes (bytes: ${paymentBytes})`);
+    } else {
+      // Amount arg not found - add it
+      debugLog('Amount arg not found in payment, adding it');
+      const paymentBytes = encodeU512ToBytes(BigInt(finalPayment));
+      moduleBytes.args.push(['amount', { cl_type: 'U512', bytes: paymentBytes }]);
+    }
+  }
+
+  debugLog('Transaction converted to Deploy format');
+  return deployJson as object;
 }
 
 /**
@@ -644,22 +664,27 @@ export function convertToDeployFormat(unsignedTransaction: object): object {
  * - Has 'hash' field at top level with computed hash
  * - Has 'header.body_hash' computed
  * - Uses PascalCase session variants (Transfer, StoredContractByHash)
+ *
+ * @param unsignedTransaction - Transaction object to check
+ * @returns true if conversion is needed
  */
-export function needsConversion(unsignedTransaction: any): boolean {
+export function needsConversion(unsignedTransaction: unknown): boolean {
   if (!unsignedTransaction || typeof unsignedTransaction !== 'object') {
     return false;
   }
 
+  const tx = unsignedTransaction as Record<string, unknown>;
+
   // Simplified format always needs conversion
-  if (unsignedTransaction.deploy_type ||
-      (unsignedTransaction.contract_address && !unsignedTransaction.session) ||
-      (unsignedTransaction.entry_point && !unsignedTransaction.session)) {
+  if (tx.deploy_type ||
+      (tx.contract_address && !tx.session) ||
+      (tx.entry_point && !tx.session)) {
     return true;
   }
 
   // If it has session with lowercase keys, it needs conversion
-  if (unsignedTransaction.session) {
-    const sessionKeys = Object.keys(unsignedTransaction.session);
+  if (tx.session && typeof tx.session === 'object') {
+    const sessionKeys = Object.keys(tx.session as object);
     const hasLowercaseVariant = sessionKeys.some(key =>
       key === 'transfer' ||
       key === 'stored_contract_by_hash' ||
@@ -672,7 +697,8 @@ export function needsConversion(unsignedTransaction: any): boolean {
   }
 
   // If it doesn't have a computed hash or body_hash, it needs conversion
-  if (!unsignedTransaction.hash || !unsignedTransaction.header?.body_hash) {
+  const header = tx.header as Record<string, unknown> | undefined;
+  if (!tx.hash || !header?.body_hash) {
     return true;
   }
 

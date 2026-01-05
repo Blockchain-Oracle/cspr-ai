@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CSPR_AI_CONTRACTS } from '@/lib/casper/constants';
 
 interface Tool {
   name: string;
@@ -391,14 +392,8 @@ function generateLabel(name: string, userAddress?: string): string {
 function generatePrompt(tool: Tool, userAddress?: string): string {
   const name = tool.name;
 
-  // Deployed contract addresses on testnet - January 2025 Odra deployment
-  // From contracts/deployment.log (use package hash for byPackageHash calls)
-  const CONTRACT_ADDRESSES = {
-    token: 'b481b1e86bc2a1c5d73d5e108c6246ad0358889acc9ef0f429bd4cb454a3bc05',
-    nft: '195b64a1cca143d9361790af34ef79d3094bb00094330c1ccc1cd4987c0b583b',
-    dao: '91083a42df41a577f2d5695ad4c78f799dc1d3016eccef4ce2a6f9a43c68506f',
-    dex: '7f09f5c808f2a3a684d70cfe49cec2c6b90c11aa1d8053046d91fd26a342bca1',
-  };
+  // Use centralized contract addresses from constants
+  const CONTRACT_ADDRESSES = CSPR_AI_CONTRACTS.testnet;
 
   // Example validator (top active validator on testnet)
   const EXAMPLE_VALIDATOR = '0106ca7c39cd272dbf21a86eeb3b36b7c26e2e9b94af64292419f7862936bca2ca';
