@@ -370,6 +370,12 @@ export default function ChatPage() {
 
       if (result.success) {
         // Transaction signed and submitted successfully via CSPR.click
+        console.log('[handleSignDeploy] Transaction successful:', {
+          deployHash: result.deployHash,
+          conversationId,
+          deployKey,
+        });
+
         setSignedDeploys(prev => new Map(prev).set(deployKey, {
           isLoading: false,
           isSigned: true,
@@ -378,12 +384,22 @@ export default function ChatPage() {
 
         // Persist to database
         if (conversationId && result.deployHash) {
-          await saveDeployState({
+          console.log('[handleSignDeploy] Saving to database...');
+          const saveResult = await saveDeployState({
             conversationId,
             deployKey,
             status: 'signed',
             deployHash: result.deployHash,
             network,
+          });
+          console.log('[handleSignDeploy] Save result:', saveResult);
+          if (!saveResult.success) {
+            console.error('[handleSignDeploy] Failed to save deploy state:', saveResult.error);
+          }
+        } else {
+          console.warn('[handleSignDeploy] Skipping database save - missing:', {
+            hasConversationId: !!conversationId,
+            hasDeployHash: !!result.deployHash,
           });
         }
 
