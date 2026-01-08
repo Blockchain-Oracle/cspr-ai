@@ -18,6 +18,22 @@
 
 Enables natural language interaction with Casper blockchain through Claude, Cursor, and other MCP-compatible AI assistants.
 
+## 🚀 Built with Casper
+
+CSPR.AI leverages the full Casper Network ecosystem for secure, production-ready blockchain AI integration:
+
+| **Casper Technology** | **How We Use It** | **Why It Matters** |
+|----------------------|-------------------|-------------------|
+| 🔗 **[casper-js-sdk](https://github.com/casper-ecosystem/casper-js-sdk)** | Core blockchain interactions, RPC communication, transaction building | Industry-standard SDK for Casper Network integration |
+| 💼 **[CSPR.click Wallet](https://cspr.click)** | Client-side transaction signing, secure key management | Non-custodial wallet - users control their keys |
+| ⚙️ **[Odra Framework](https://odra.dev)** | Smart contract development (Token, NFT, DAO, DEX) | Type-safe Rust framework for Casper contracts |
+| 📜 **[CEP-18 Standard](https://github.com/casper-network/ceps/blob/master/ceps/cep-18.md)** | Fungible token implementation | Official Casper token standard |
+| 🎨 **[CEP-78 Standard](https://github.com/casper-network/ceps/blob/master/ceps/cep-78.md)** | NFT collection implementation | Enhanced NFT standard with metadata |
+| 🌐 **[Casper RPC](https://docs.casper.network/developers/json-rpc/)** | Network queries, deploy submission | Direct node communication |
+| 📊 **[CSPR.cloud API](https://cspr.cloud)** | Enhanced data queries, validator metrics, deploy history | Indexed blockchain data for fast queries |
+
+**All transaction signing happens client-side** via CSPR.click - CSPR.AI never handles private keys.
+
 ## Live Deployment
 
 CSPR.AI is live and ready to use:
