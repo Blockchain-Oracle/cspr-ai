@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { CSPR_AI_CONTRACTS } from '@/lib/casper/constants';
 
 interface Tool {
   name: string;
@@ -391,13 +392,8 @@ function generateLabel(name: string, userAddress?: string): string {
 function generatePrompt(tool: Tool, userAddress?: string): string {
   const name = tool.name;
 
-  // Deployed contract addresses on testnet (pre-populated for easy testing)
-  const CONTRACT_ADDRESSES = {
-    token: 'hash-810963e7e989ccc987683a2d1bcb4e17762f6511f06c306393dfd84c4db10995',
-    nft: 'hash-5536ec2a8dbfd8d10328dec3b424df9b6c3fe8ac2af43910aa33f102d26bb33c',
-    dao: 'hash-f41a989359447ae236015956e9d3d0f80e0c92112ed5b6b12a1a4eef14998d8e',
-    dex: 'hash-75bc6d255bd4173b4968776b6638d02d170d445f42e7c48e89bf99725426899a',
-  };
+  // Use centralized contract addresses from constants
+  const CONTRACT_ADDRESSES = CSPR_AI_CONTRACTS.testnet;
 
   // Example validator (top active validator on testnet)
   const EXAMPLE_VALIDATOR = '0106ca7c39cd272dbf21a86eeb3b36b7c26e2e9b94af64292419f7862936bca2ca';

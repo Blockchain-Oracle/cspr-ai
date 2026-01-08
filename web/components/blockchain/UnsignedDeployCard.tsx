@@ -5,7 +5,7 @@ import { Card } from '@/components/shared/Card';
 import { Button } from '@/components/shared/Button';
 import { cn } from '@/components/utils';
 import { motion } from 'framer-motion';
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Wallet } from 'lucide-react';
+import { AlertTriangle, Check, ChevronDown, ChevronRight, FileCode, Wallet } from 'lucide-react';
 
 export interface UnsignedDeployData {
   type: string;
@@ -49,6 +49,49 @@ export function UnsignedDeployCard({
   const [showRaw, setShowRaw] = React.useState(false);
 
   const isMainnet = data.network.toLowerCase() === 'casper' || data.network.toLowerCase() === 'mainnet';
+
+  // Analyze the deploy structure to determine what type it is
+  const deployAnalysis = React.useMemo(() => {
+    const deploy = data.unsigned_deploy as any;
+    const session = deploy?.session;
+
+    // Check session type - MCP outputs lowercase, SDK outputs PascalCase
+    const isNativeTransfer = session?.Transfer !== undefined || session?.transfer !== undefined;
+    const isContractCall = session?.StoredContractByHash !== undefined || session?.stored_contract_by_hash !== undefined;
+    const isContractDeployment = session?.ModuleBytes !== undefined || session?.module_bytes !== undefined;
+
+    // Also recognize StoredContractByName (used for delegation to auction contract)
+    const isContractByName = session?.StoredContractByName !== undefined || session?.stored_contract_by_name !== undefined;
+
+    // Recognize simplified MCP format (has deploy_type or contract_address at root level, no session)
+    const isSimplifiedFormat = deploy?.deploy_type !== undefined ||
+                               (deploy?.contract_address !== undefined && !session) ||
+                               (deploy?.entry_point !== undefined && !session);
+
+    // Only check for placeholder in contract deployments
+    let needsWasmCompilation = false;
+    if (isContractDeployment) {
+      const moduleBytes = session.ModuleBytes || session.module_bytes;
+      const sessionStr = JSON.stringify(moduleBytes);
+      needsWasmCompilation = sessionStr.includes('[WASM_BYTES_PLACEHOLDER]');
+    }
+
+    return {
+      isNativeTransfer,
+      isContractCall,
+      isContractDeployment,
+      isContractByName,
+      isSimplifiedFormat,
+      needsWasmCompilation,
+    };
+  }, [data.unsigned_deploy]);
+
+  // Can sign if it's a transfer, contract call, contract by name, simplified format, or a contract deployment with real WASM
+  const canSign = deployAnalysis.isNativeTransfer ||
+                  deployAnalysis.isContractCall ||
+                  deployAnalysis.isContractByName ||
+                  deployAnalysis.isSimplifiedFormat ||
+                  (deployAnalysis.isContractDeployment && !deployAnalysis.needsWasmCompilation);
 
   return (
     <motion.div
@@ -129,16 +172,16 @@ export function UnsignedDeployCard({
             
             {/* Raw Data Toggle */}
             <div>
-                <button 
+                <button
                     onClick={() => setShowRaw(!showRaw)}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
                 >
                     {showRaw ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                     {showRaw ? "Hide Raw Deploy Data" : "Show Raw Deploy Data"}
                 </button>
-                
+
                 {showRaw && (
-                    <motion.div 
+                    <motion.div
                         initial={{ height: 0, opacity: 0 }}
                         animate={{ height: 'auto', opacity: 1 }}
                         className="mt-2"
@@ -149,6 +192,24 @@ export function UnsignedDeployCard({
                     </motion.div>
                 )}
             </div>
+
+            {/* WASM Deploy Notice - only show for contract deployments with placeholder */}
+            {deployAnalysis.needsWasmCompilation && (
+                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-200">
+                    <div className="flex items-start gap-2">
+                        <FileCode className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs space-y-1">
+                            <p className="font-semibold">Contract Deployment Requires WASM</p>
+                            <p className="text-amber-300/80">
+                                This deploy contains a WASM bytecode placeholder. The MCP server needs pre-compiled WASM files.
+                            </p>
+                            <p className="text-amber-300/80">
+                                Ensure WASM files exist in <code className="bg-black/30 px-1 rounded">contracts/wasm/</code>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Transaction Hash Display (when submitted to network) */}
             {isSigned && deployHash && (
@@ -240,21 +301,21 @@ export function UnsignedDeployCard({
                     variant="primary"
                     fullWidth
                     size="lg"
-                    onClick={onSign}
+                    onClick={canSign ? onSign : undefined}
                     isLoading={isLoading}
-                    disabled={isSigned || isCancelled || isLoading}
+                    disabled={isSigned || isCancelled || !canSign || isLoading}
                     className={cn(
                         "font-semibold shadow-lg transition-all",
-                        !isLoading && !isSigned && !isCancelled && "hover:scale-[1.02]",
-                        (isLoading || isSigned || isCancelled) && "opacity-50 cursor-not-allowed",
+                        canSign && !isLoading && !isSigned && !isCancelled && "hover:scale-[1.02]",
+                        (!canSign || isLoading || isSigned || isCancelled) && "opacity-50 cursor-not-allowed",
                         isMainnet ? "bg-red-600 hover:bg-red-700 shadow-red-500/20" : "shadow-primary/25"
                     )}
                     leftIcon={isSigned ? <Check className="h-5 w-5" /> : isCancelled ? <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg> : <Wallet className="h-5 w-5" />}
                 >
-                    {isSigned ? "Transaction Submitted" : isCancelled ? "Transaction Cancelled" : isLoading ? "Signing & Submitting..." : "Sign & Submit"}
+                    {isSigned ? "Transaction Submitted" : isCancelled ? "Transaction Cancelled" : !canSign ? "Compilation Required" : isLoading ? "Signing & Submitting..." : "Sign & Submit"}
                 </Button>
 
-                {!isSigned && !isCancelled && (
+                {!isSigned && !isCancelled && canSign && (
                     <Button
                         variant="ghost"
                         onClick={onCancel}
@@ -269,7 +330,7 @@ export function UnsignedDeployCard({
                 )}
             </div>
 
-            {isMainnet && (
+            {isMainnet && canSign && (
                 <div className="flex items-center gap-2 justify-center text-xs text-red-400 mt-2">
                     <AlertTriangle className="h-3 w-3" />
                     <span>This is a real transaction on Mainnet. Proceed with caution.</span>

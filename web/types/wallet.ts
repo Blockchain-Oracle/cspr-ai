@@ -26,11 +26,44 @@ export interface SignDeployResult {
   cancelled?: boolean;
 }
 
+/**
+ * Transaction status update from CSPR.click
+ * Received during send() operation
+ */
+export interface TransactionStatusUpdate {
+  status: 'pending' | 'signing' | 'submitted' | 'processed' | 'cancelled' | 'error';
+  data?: {
+    deployHash?: string;
+    transactionHash?: string;
+    csprCloudTransaction?: {
+      error_message: string | null;
+    };
+    error?: string;
+    errorData?: string;
+  };
+}
+
+/**
+ * Result of sendTransaction() operation
+ * Uses CSPR.click's send() which handles signing AND submission
+ */
+export interface SendTransactionResult {
+  success: boolean;
+  deployHash?: string;
+  error?: string;
+  errorData?: unknown;
+  cancelled?: boolean;
+}
+
 export interface WalletContextValue extends WalletState {
   signIn: () => void;
   signOut: () => void;
   disconnect: () => void;
   signDeploy: (unsignedDeploy: object) => Promise<SignDeployResult>;
+  sendTransaction: (
+    transaction: object,
+    onStatusUpdate?: (update: TransactionStatusUpdate) => void
+  ) => Promise<SendTransactionResult>;
 }
 
 // Supported wallet providers

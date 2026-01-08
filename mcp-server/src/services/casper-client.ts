@@ -104,55 +104,77 @@ export class CasperClient {
 
   /**
    * Get validators with their stakes and delegation info
+   * Note: casper-js-sdk returns camelCase field names (eraValidators, validatorWeights, etc.)
    */
   async getValidators(): Promise<ValidatorInfo[]> {
     const auctionInfo = await this.getLatestAuctionInfo();
-    const eraValidators = auctionInfo.auction_state?.era_validators || [];
+    // SDK uses camelCase: auctionState, eraValidators, validatorWeights
+    const eraValidators = auctionInfo.auctionState?.eraValidators || [];
 
     if (eraValidators.length === 0) {
       return [];
     }
 
     const latestEra = eraValidators[eraValidators.length - 1];
-    const validatorWeights = latestEra?.validator_weights || [];
-    const bids = auctionInfo.auction_state?.bids || [];
+    const validatorWeights = latestEra?.validatorWeights || [];
+    const bids = auctionInfo.auctionState?.bids || [];
 
     // Create a map of bids for delegation info
+    // SDK uses: bid.publicKey (PublicKey object with toHex() method)
     const bidMap = new Map<string, any>();
     for (const bid of bids) {
-      bidMap.set(bid.public_key, bid);
+      const pubKeyHex = bid.publicKey?.toHex?.() || bid.publicKey;
+      if (pubKeyHex) {
+        bidMap.set(pubKeyHex, bid);
+      }
     }
 
     return validatorWeights.map((v: any) => {
-      const bid = bidMap.get(v.public_key);
+      // SDK uses: v.validator (PublicKey object) and v.weight (BigInt)
+      const pubKeyHex = v.validator?.toHex?.() || v.validator;
+      const bid = bidMap.get(pubKeyHex);
+      // SDK uses: bid.bid.validator.delegationRate and bid.bid.delegator (for delegators)
+      const delegationRate = bid?.bid?.validator?.delegationRate || 0;
+      // Delegators might be in bid.bid.delegator array
+      const delegatorCount = bid?.bid?.delegator?.length || 0;
+
       return {
-        public_key: v.public_key,
+        public_key: pubKeyHex,
         total_stake_cspr: (BigInt(v.weight) / MOTES_PER_CSPR).toString(),
-        delegation_rate: bid?.bid?.delegation_rate || 0,
-        delegator_count: bid?.bid?.delegators?.length || 0
+        delegation_rate: delegationRate,
+        delegator_count: delegatorCount
       };
     });
   }
 
   /**
    * Get staking info for a specific delegator
+   * Note: casper-js-sdk returns camelCase field names (auctionState, bids, etc.)
    */
   async getStakingInfo(publicKeyHex: string): Promise<{
     delegations: DelegationInfo[];
     totalStaked: string;
   }> {
     const auctionInfo = await this.getLatestAuctionInfo();
-    const bids = auctionInfo.auction_state?.bids || [];
+    // SDK uses camelCase: auctionState, bids
+    const bids = auctionInfo.auctionState?.bids || [];
 
     const delegations: DelegationInfo[] = [];
 
     for (const bid of bids) {
-      const delegators = bid.bid?.delegators || [];
+      // SDK uses: bid.publicKey (PublicKey object with toHex() method)
+      const validatorPubKeyHex = bid.publicKey?.toHex?.() || bid.publicKey;
+      // SDK uses: bid.bid.delegator (array of delegators)
+      const delegators = bid.bid?.delegator || [];
+
       for (const delegator of delegators) {
-        if (delegator.delegator_public_key === publicKeyHex) {
+        // SDK uses: delegator.delegatorPublicKey (PublicKey object) and delegator.stakedAmount
+        const delegatorPubKeyHex = delegator.delegatorPublicKey?.toHex?.() || delegator.delegatorPublicKey;
+
+        if (delegatorPubKeyHex === publicKeyHex) {
           delegations.push({
-            validator_public_key: bid.public_key,
-            staked_amount_cspr: (BigInt(delegator.staked_amount) / MOTES_PER_CSPR).toString()
+            validator_public_key: validatorPubKeyHex,
+            staked_amount_cspr: (BigInt(delegator.stakedAmount) / MOTES_PER_CSPR).toString()
           });
         }
       }
