@@ -4,6 +4,24 @@
   Smart contracts for the CSPR.AI platform built with the <a href="https://odra.dev">Odra Framework</a> for Casper Network.
 </p>
 
+## 🦀 Built with Odra Framework
+
+**All CSPR.AI smart contracts are built using the [Odra Framework](https://odra.dev)** - a type-safe, developer-friendly Rust framework for Casper Network.
+
+| **Odra Feature** | **How We Use It** | **Benefit** |
+|-----------------|-------------------|-------------|
+| 🧩 **odra-modules** | Reusable CEP-18 and Ownable modules | No need to reinvent standards |
+| 🛠️ **OdraVM Testing** | Fast in-memory tests | Quick iteration during development |
+| ⚡ **CasperVM Testing** | Production-accurate validation | Ensures contracts work on real network |
+| 📝 **Odra CLI** | `cargo odra build` / `cargo odra test` | Streamlined development workflow |
+| 🔒 **Type Safety** | Rust's type system | Catch bugs at compile time |
+
+### Casper Standards Implemented
+
+- ✅ **CEP-18** - Fungible tokens via `SubModule<Cep18>`
+- ✅ **CEP-78 Compatible** - NFT collections with metadata
+- ✅ **Access Control** - `SubModule<Ownable>` for admin functions
+
 ## Architecture
 
 ```

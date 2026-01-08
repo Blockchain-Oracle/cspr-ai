@@ -594,7 +594,9 @@ export function convertToDeployFormat(unsignedTransaction: object): object {
 
   const asDeploy = transaction as { header?: unknown; payment?: unknown; session?: unknown; toJSON?: () => object };
   if (asDeploy.header && asDeploy.payment && asDeploy.session) {
-    deployJson = Deploy.toJSON(transaction) as Record<string, unknown>;
+    // Use Deploy.toJSON with proper type assertion
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    deployJson = Deploy.toJSON(asDeploy as any) as Record<string, unknown>;
   } else if (typeof asDeploy.toJSON === 'function') {
     deployJson = asDeploy.toJSON() as Record<string, unknown>;
   } else {

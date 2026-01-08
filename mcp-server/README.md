@@ -5,6 +5,25 @@
   Provides 50+ tools for AI assistants to interact with Casper blockchain through natural language.
 </p>
 
+## 🔗 Powered by casper-js-sdk
+
+**CSPR.AI MCP Server is built on the official [casper-js-sdk](https://github.com/casper-ecosystem/casper-js-sdk)** for all blockchain interactions.
+
+| **SDK Feature** | **How We Use It** | **Tools Enabled** |
+|----------------|-------------------|-------------------|
+| 🌐 **CasperClient** | RPC communication with Casper nodes | All network queries |
+| 📦 **DeployUtil** | Build unsigned transactions | Transfer, delegation, contract calls |
+| 🔑 **Keys & CLValue** | Public key validation, data encoding | Account tools, parameter encoding |
+| 💰 **Conversions** | Motes ↔ CSPR conversion | Balance display, payment amounts |
+| 📝 **Contract Calls** | StoredContractByHash execution | CEP-18, CEP-78, DAO, DEX interactions |
+
+### Casper Network Integration
+
+- ✅ **Testnet & Mainnet** support via configurable RPC endpoints
+- ✅ **CSPR.cloud API** for enhanced data queries (validator metrics, deploy history)
+- ✅ **Transaction Building** - All deploys built using `DeployUtil.makeDeploy()`
+- ✅ **Standards Compliant** - CEP-18 and CEP-78 contract interactions
+
 ## Live Deployment
 
 CSPR.AI is live and ready to use:

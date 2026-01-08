@@ -6,6 +6,26 @@
 
 Built with Next.js 16, the CSPR.AI dashboard provides a conversational interface to the Model Context Protocol (MCP) server, enabling users to query blockchain state, build transactions, and interact with smart contracts using AI assistance.
 
+## 💼 Powered by CSPR.click Wallet
+
+**CSPR.AI uses [CSPR.click](https://cspr.click) for secure, non-custodial transaction signing.**
+
+| **Feature** | **Implementation** | **Security Benefit** |
+|------------|-------------------|---------------------|
+| 🔐 **Client-Side Signing** | Transactions signed in browser via CSPR.click extension | Private keys never leave user's device |
+| 🔑 **Non-Custodial** | Users maintain full control of keys | CSPR.AI cannot access funds |
+| ✍️ **Explicit Approval** | Every transaction requires user confirmation | No automatic spending |
+| 🌐 **Network Switching** | Testnet/Mainnet support | Safe testing environment |
+| 📱 **Browser Extension** | Chrome/Brave/Edge compatible | Standard wallet UX |
+
+### Transaction Flow
+
+```
+1. AI builds unsigned transaction → 2. Display to user → 3. User approves in CSPR.click → 4. Signed transaction submitted
+```
+
+**No private keys are ever sent to servers or stored in databases.**
+
 ## Table of Contents
 
 - [Overview](#overview)
