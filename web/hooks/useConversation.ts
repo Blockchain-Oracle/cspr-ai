@@ -121,18 +121,19 @@ export function useConversation(options: UseConversationOptions = {}): UseConver
   const loadConversation = useCallback(async (id: string) => {
     setIsLoadingConversation(true);
     try {
-      const result = await getConversationWithMessages(id);
+      // Pass walletAddress for security verification
+      const result = await getConversationWithMessages(id, walletAddress);
       if (result) {
         setConversationId(result.conversation.id);
         setMessages(result.messages.map(dbMessageToChatMessage));
       } else {
-        // Conversation not found, start a new one
+        // Conversation not found or access denied, start a new one
         await startNewConversation();
       }
     } finally {
       setIsLoadingConversation(false);
     }
-  }, [startNewConversation]);
+  }, [startNewConversation, walletAddress]);
 
   /**
    * Delete the current conversation
@@ -141,14 +142,16 @@ export function useConversation(options: UseConversationOptions = {}): UseConver
     if (!conversationId) return;
 
     try {
-      await deleteConversation(conversationId);
+      // Pass walletAddress for security verification
+      await deleteConversation(conversationId, walletAddress);
       setConversationId(null);
       setMessages([]);
       await refreshConversations();
     } catch (error) {
       console.error('Failed to delete conversation:', error);
+      throw error; // Re-throw to allow UI to handle unauthorized deletion
     }
-  }, [conversationId, refreshConversations]);
+  }, [conversationId, refreshConversations, walletAddress]);
 
   /**
    * Persist a message to the database
