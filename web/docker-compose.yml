@@ -12,7 +12,7 @@ services:
       POSTGRES_PASSWORD: csprai_dev_password
       POSTGRES_DB: csprai
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/init-db.sql:/docker-entrypoint-initdb.d/init.sql:ro
