@@ -83,16 +83,29 @@ export class CasperClient {
 
   /**
    * Get account balance in CSPR and motes
+   *
+   * Returns 0 balance for accounts that don't exist yet (not funded)
    */
   async getBalance(publicKeyHex: string): Promise<BalanceResult> {
-    const publicKey = PublicKey.fromHex(publicKeyHex);
-    const purseIdentifier = PurseIdentifier.fromPublicKey(publicKey);
-    const result = await this.rpcClient.queryLatestBalance(purseIdentifier);
+    try {
+      const publicKey = PublicKey.fromHex(publicKeyHex);
+      const purseIdentifier = PurseIdentifier.fromPublicKey(publicKey);
+      const result = await this.rpcClient.queryLatestBalance(purseIdentifier);
 
-    const balanceMotes = result.balance.toString();
-    const balanceCspr = (BigInt(balanceMotes) / MOTES_PER_CSPR).toString();
+      const balanceMotes = result.balance.toString();
+      const balanceCspr = (BigInt(balanceMotes) / MOTES_PER_CSPR).toString();
 
-    return { balance: balanceCspr, balanceMotes };
+      return { balance: balanceCspr, balanceMotes };
+    } catch (error: any) {
+      // Handle "Purse not found" error - account doesn't exist yet (not funded)
+      // This is expected behavior for new accounts, return 0 balance
+      if (error?.statusCode === -32026 || error?.message?.includes('Purse not found')) {
+        return { balance: '0', balanceMotes: '0' };
+      }
+
+      // Re-throw other errors
+      throw error;
+    }
   }
 
   /**
