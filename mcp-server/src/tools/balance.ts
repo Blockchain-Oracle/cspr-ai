@@ -70,12 +70,15 @@ export function registerBalanceTool(server: McpServer, client: CasperClient): vo
 
         let textContent: string;
         if (params.response_format === ResponseFormat.MARKDOWN) {
+          const isZeroBalance = result.balance === '0';
           textContent = `# Casper Account Balance
 
 **Public Key:** \`${params.public_key.slice(0, 20)}...${params.public_key.slice(-8)}\`
 **Balance:** ${result.balance} CSPR
 **Balance (motes):** ${result.balanceMotes}
-**Network:** ${output.network}`;
+**Network:** ${output.network}
+
+${isZeroBalance ? '*Note: This account has not been funded yet. Send CSPR to this address to activate it.*' : ''}`;
         } else {
           textContent = JSON.stringify(output, null, 2);
         }
