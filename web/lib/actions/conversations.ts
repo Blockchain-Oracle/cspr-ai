@@ -5,16 +5,24 @@ import { db, conversations, messages, type Conversation, type Message } from '@/
 
 /**
  * Create a new conversation
+ *
+ * SECURITY: Requires wallet address to ensure conversations are properly
+ * scoped to users and prevent data leakage.
  */
 export async function createConversation(params: {
   title?: string;
   walletAddress?: string;
 }): Promise<Conversation> {
+  // CRITICAL: Require wallet address for conversation creation
+  if (!params.walletAddress) {
+    throw new Error('Wallet address is required to create a conversation');
+  }
+
   const [conversation] = await db
     .insert(conversations)
     .values({
       title: params.title || 'New Conversation',
-      walletAddress: params.walletAddress || null,
+      walletAddress: params.walletAddress,
     })
     .returning();
 
@@ -22,25 +30,33 @@ export async function createConversation(params: {
 }
 
 /**
- * Get all conversations, ordered by most recent first
+ * Get all conversations for a specific wallet, ordered by most recent first
+ *
+ * SECURITY: Returns empty array if no wallet address is provided to prevent
+ * leaking conversations from other users.
  */
 export async function getConversations(walletAddress?: string): Promise<Conversation[]> {
-  if (walletAddress) {
-    return db.query.conversations.findMany({
-      where: eq(conversations.walletAddress, walletAddress),
-      orderBy: [desc(conversations.updatedAt)],
-    });
+  // CRITICAL: Never return all conversations - this would leak data across users
+  if (!walletAddress) {
+    return [];
   }
 
   return db.query.conversations.findMany({
+    where: eq(conversations.walletAddress, walletAddress),
     orderBy: [desc(conversations.updatedAt)],
   });
 }
 
 /**
  * Get a single conversation by ID with its messages
+ *
+ * SECURITY: Optionally pass walletAddress to verify ownership before returning data.
+ * If walletAddress is provided and doesn't match, returns null to prevent unauthorized access.
  */
-export async function getConversationWithMessages(id: string): Promise<{
+export async function getConversationWithMessages(
+  id: string,
+  walletAddress?: string
+): Promise<{
   conversation: Conversation;
   messages: Message[];
 } | null> {
@@ -54,6 +70,12 @@ export async function getConversationWithMessages(id: string): Promise<{
   });
 
   if (!conversation) return null;
+
+  // SECURITY: Verify ownership if wallet address is provided
+  if (walletAddress && conversation.walletAddress !== walletAddress) {
+    console.warn(`[Security] Blocked access attempt: User ${walletAddress} tried to access conversation ${id} owned by ${conversation.walletAddress}`);
+    return null;
+  }
 
   return {
     conversation,
@@ -82,8 +104,27 @@ export async function updateConversationTitle(
 
 /**
  * Delete a conversation and all its messages (cascade)
+ *
+ * SECURITY: Optionally pass walletAddress to verify ownership before deletion.
+ * If walletAddress is provided and doesn't match, throws an error to prevent unauthorized deletion.
  */
-export async function deleteConversation(id: string): Promise<void> {
+export async function deleteConversation(id: string, walletAddress?: string): Promise<void> {
+  // SECURITY: Verify ownership before deletion if wallet address is provided
+  if (walletAddress) {
+    const conversation = await db.query.conversations.findFirst({
+      where: eq(conversations.id, id),
+    });
+
+    if (!conversation) {
+      throw new Error('Conversation not found');
+    }
+
+    if (conversation.walletAddress !== walletAddress) {
+      console.warn(`[Security] Blocked delete attempt: User ${walletAddress} tried to delete conversation ${id} owned by ${conversation.walletAddress}`);
+      throw new Error('Unauthorized: Cannot delete conversation owned by another user');
+    }
+  }
+
   await db.delete(conversations).where(eq(conversations.id, id));
 }
 
